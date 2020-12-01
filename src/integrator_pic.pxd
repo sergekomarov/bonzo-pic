@@ -17,7 +17,3 @@ cdef class BnzIntegrator:
 
   # number of passes of current filter
   cdef int Nfilt
-
-  # Functions.
-
-  cdef void init_data(self)

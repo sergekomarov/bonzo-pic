@@ -30,7 +30,7 @@ typedef double real;
 
 //===========================================================
 
-#define NVARS 9
+#define NFIELD 9
 #define NPRT_PROP 10
 // indices of electromagnetic fields and particle currents
 enum {EX=0,EY,EZ, BX,BY,BZ, JX,JY,JZ};

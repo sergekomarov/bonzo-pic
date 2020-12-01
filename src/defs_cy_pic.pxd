@@ -45,15 +45,9 @@ ctypedef ints[:,:,::1] ints3d
 
 #---------------------------------------------------
 
-# Import constants from the C definitions file.
-
 cdef extern from "defs.h" nogil:
-  real B_PI
-
-cdef extern from "defs.h" nogil:
-  int NVARS
-  enum: XAX,YAX,ZAX
-
-cdef extern from "defs.h" nogil:
-  enum: EX,EY,EZ, BX,BY,BZ, JX,JY,JZ
+  int NFIELD
   int NPRT_PROP
+  enum: XAX,YAX,ZAX
+  enum: EX,EY,EZ, BX,BY,BZ, JX,JY,JZ
+  real B_PI

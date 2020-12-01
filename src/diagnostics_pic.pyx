@@ -9,81 +9,77 @@ cimport numpy as np
 from cython.parallel import prange, parallel, threadid
 
 from libc.math cimport sqrt,floor,ceil,log,exp,sin,cos,pow,fabs,fmin,fmax
-from libc.stdlib cimport malloc, calloc, free
 from libc.stdio cimport printf
 
-from bnz.utils cimport print_root
+from bnz.utils cimport print_root, sqr
 
 
-
-cdef void print_nrg(BnzSim sim):
+cdef void print_nrg(BnzGrid grid, BnzIntegr integr):
 
   cdef:
     ints i,j,k, n
     int id
-    real Ekm=0., Emm=0., Eem=0.
+    real ekm=0., emm=0., eem=0.
 
   cdef:
-    GridParams gp = sim.grid.params
-    GridData gd = sim.grid.data
-    BnzParticles prts = sim.prts
+    GridCoord gc = grid.coord
+    GridData gd = grid.data
+    BnzParticles prts = grid.prts
 
-    ints Ncells = gp.Nact_glob[0] * gp.Nact_glob[1] * gp.Nact_glob[2]
+    ints ncells = gc.Nact_glob[0] * gc.Nact_glob[1] * gc.Nact_glob[2]
 
-    real[::1] Em_loc = np.zeros(OMP_NT)
-    real[::1] Ee_loc = np.zeros(OMP_NT)
-    real[::1] Ek_loc = np.zeros(OMP_NT)
+    real1d em_loc = np.zeros(OMP_NT)
+    real1d ee_loc = np.zeros(OMP_NT)
+    real1d ek_loc = np.zeros(OMP_NT)
 
-  cdef ints rank=0
   IF MPI:
-    rank = mpi.COMM_WORLD.Get_rank()
     cdef:
-      real[::1] var     = np.empty(3, dtype='f8')
-      real[::1] var_sum = np.empty(3, dtype='f8')
-      
-
-  with nogil, parallel(num_threads=OMP_NT):
-    id = threadid()
-
-    for k in prange(gp.k1, gp.k2+1, schedule='dynamic'):
-      for j in range(gp.j1, gp.j2+1):
-        for i in range(gp.i1, gp.i2+1):
-
-          Ee_loc[id] = Ee_loc[id] + 0.5*(gd.E[0,k,j,i]**2 + gd.E[1,k,j,i]**2 + gd.E[2,k,j,i]**2)
-          Em_loc[id] = Em_loc[id] + 0.5*(gd.B[0,k,j,i]**2 + gd.B[1,k,j,i]**2 + gd.B[2,k,j,i]**2)
+      double[::1] var     = np.empty(3, dtype='f8')
+      double[::1] var_sum = np.empty(3, dtype='f8')
 
 
   with nogil, parallel(num_threads=OMP_NT):
     id = threadid()
 
-    for n in prange(prts.Np, schedule='dynamic'):
+    for k in prange(gc.k1, gc.k2+1, schedule='dynamic'):
+      for j in range(gc.j1, gc.j2+1):
+        for i in range(gc.i1, gc.i2+1):
 
-      Ek_loc[id] = Ek_loc[id] + prts.data.m[n] * (prts.data.g[n]-1)
+          ee_loc[id] = ee_loc[id] + 0.5*(sqr(gd.ee[0,k,j,i]) + sqr(gd.ee[1,k,j,i]) + sqr(gd.ee[2,k,j,i]))
+          em_loc[id] = em_loc[id] + 0.5*(sqr(gd.bf[0,k,j,i]) + sqr(gd.bf[1,k,j,i]) + sqr(gd.bf[2,k,j,i]))
+
+
+  with nogil, parallel(num_threads=OMP_NT):
+    id = threadid()
+
+    for n in prange(prts.prop.Np, schedule='dynamic'):
+
+      ek_loc[id] = ek_loc[id] + prts.data.m[n] * (prts.data.g[n]-1.)
 
 
   for i in range(OMP_NT):
 
-    Eem += Ee_loc[i]
-    Emm += Em_loc[i]
-    Ekm += Ek_loc[i]
+    eem += ee_loc[i]
+    emm += em_loc[i]
+    ekm += ek_loc[i]
 
-  Eem /= Ncells
-  Emm /= Ncells
-  Ekm /= Ncells
-  Ekm *= sim.phys.c**2
+  eem /= ncells
+  emm /= ncells
+  ekm /= ncells
+  ekm *= integr.cour**2
 
   IF MPI:
 
-    var[0], var[1], var[2] = Eem, Emm, Ekm
+    var[0], var[1], var[2] = eem, emm, ekm
     mpi.COMM_WORLD.Allreduce(var, var_sum, op=mpi.SUM)
-    Eem, Emm, Ekm = var_sum[0], var_sum[1], var_sum[2]
+    eem, emm, ekm = var_sum[0], var_sum[1], var_sum[2]
 
-  print_root(rank, "\n----- mean energy densities -------\n")
-  print_root(rank, "Ek = %f\n", Ekm)
-  print_root(rank, "Ee = %f\n", Eem)
-  print_root(rank, "Em = %f\n", Emm)
-  print_root(rank, "Etot = %f\n", Ekm+Eem+Emm)
+  print_root("\n----- mean energy densities -------\n")
+  print_root("Ek = %f\n", ekm)
+  print_root("Ee = %f\n", eem)
+  print_root("Em = %f\n", emm)
+  print_root("Etot = %f\n", ekm+eem+emm)
 
-  print_root(rank, "-----------------------------------\n")
+  print_root("-----------------------------------\n")
 
   return
