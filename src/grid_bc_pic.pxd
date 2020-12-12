@@ -1,12 +1,11 @@
 # -*- coding: utf-8 -*-
 
 from bnz.defs_cy cimport *
-from bnz.coord.grid cimport *
-
-cdef class BnzSim
+from bnz.coord.grid cimport GridCoord,GridData
+from bnz.pic.integrate cimport BnzIntegr
 
 # grid BC function pointer
-ctypedef void (*GridBcFunc)(BnzSim, ints[::1])
+ctypedef void (*GridBcFunc)(GridData,GridCoord*, BnzIntegr, int1d)
 
 # Boundary condition class.
 
@@ -19,10 +18,7 @@ cdef class GridBc:
   # array of grid BC function pointers
   cdef GridBcFunc grid_bc_funcs[3][2]
 
-  IF MPI:
-    cdef:
-      real2d sendbuf, recvbuf    # send/receive buffers for boundary conditions
-      ints recvbuf_size, sendbuf_size   # buffer sizes
+  real2d sendbuf, recvbuf    # send/receive buffers for boundary conditions
+  long recvbuf_size, sendbuf_size   # buffer sizes
 
-
-cdef void apply_grid_bc(BnzSim, ints[::1])
+  cdef void apply_grid_bc(self, GridData,GridCoord*, BnzIntegr, int1d)

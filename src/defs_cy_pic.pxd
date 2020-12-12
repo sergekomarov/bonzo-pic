@@ -18,7 +18,7 @@ cdef extern from "sys/time.h" nogil:
 # Type shortcuts.
 
 # Use this type for indexing.
-ctypedef Py_ssize_t ints
+# ctypedef Py_ssize_t int
 
 # Define "real" depending on precision.
 
@@ -39,15 +39,34 @@ ELSE:
   ctypedef double[:,:,:,::1] real4d
   ctypedef double[:,:,:,:,::1] real5d
 
-ctypedef ints[::1] ints1d
-ctypedef ints[:,::1] ints2d
-ctypedef ints[:,:,::1] ints3d
+ctypedef int[::1] int1d
+ctypedef int[:,::1] int2d
+ctypedef int[:,:,::1] int3d
 
 #---------------------------------------------------
 
 cdef extern from "defs.h" nogil:
-  int NFIELD
+  int NVAR
   int NPRT_PROP
   enum: XAX,YAX,ZAX
   enum: EX,EY,EZ, BX,BY,BZ, JX,JY,JZ
   real B_PI
+
+#----------------------------------------------------
+
+cdef extern from "defs.h" nogil:
+  real SQR(real)
+  real CUBE(real)
+  real SQRT(real)
+  real FABS(real)
+  real FSIGN(real)
+  real LOG(real)
+  real POW(real)
+  real EXP(real)
+  real FLOOR(real)
+  real FMIN(real)
+  real FMAX(real)
+  real IMIN(real)
+  real IMAX(real)
+  real SIN(real)
+  real COS(real)

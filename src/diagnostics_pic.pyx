@@ -8,16 +8,15 @@ import numpy as np
 cimport numpy as np
 from cython.parallel import prange, parallel, threadid
 
-from libc.math cimport sqrt,floor,ceil,log,exp,sin,cos,pow,fabs,fmin,fmax
 from libc.stdio cimport printf
 
-from bnz.utils cimport print_root, sqr
+from bnz.utils cimport print_root
 
 
 cdef void print_nrg(BnzGrid grid, BnzIntegr integr):
 
   cdef:
-    ints i,j,k, n
+    int i,j,k, n
     int id
     real ekm=0., emm=0., eem=0.
 
@@ -26,7 +25,7 @@ cdef void print_nrg(BnzGrid grid, BnzIntegr integr):
     GridData gd = grid.data
     BnzParticles prts = grid.prts
 
-    ints ncells = gc.Nact_glob[0] * gc.Nact_glob[1] * gc.Nact_glob[2]
+    int ncells = gc.Nact_glob[0] * gc.Nact_glob[1] * gc.Nact_glob[2]
 
     real1d em_loc = np.zeros(OMP_NT)
     real1d ee_loc = np.zeros(OMP_NT)
@@ -45,8 +44,8 @@ cdef void print_nrg(BnzGrid grid, BnzIntegr integr):
       for j in range(gc.j1, gc.j2+1):
         for i in range(gc.i1, gc.i2+1):
 
-          ee_loc[id] = ee_loc[id] + 0.5*(sqr(gd.ee[0,k,j,i]) + sqr(gd.ee[1,k,j,i]) + sqr(gd.ee[2,k,j,i]))
-          em_loc[id] = em_loc[id] + 0.5*(sqr(gd.bf[0,k,j,i]) + sqr(gd.bf[1,k,j,i]) + sqr(gd.bf[2,k,j,i]))
+          ee_loc[id] = ee_loc[id] + 0.5*(SQR(gd.ee[0,k,j,i]) + SQR(gd.ee[1,k,j,i]) + SQR(gd.ee[2,k,j,i]))
+          em_loc[id] = em_loc[id] + 0.5*(SQR(gd.bf[0,k,j,i]) + SQR(gd.bf[1,k,j,i]) + SQR(gd.bf[2,k,j,i]))
 
 
   with nogil, parallel(num_threads=OMP_NT):

@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 
-from mpi4py import MPI as mpi
-from mpi4py cimport MPI as mpi
+IF MPI:
+  from mpi4py import MPI as mpi
+  from mpi4py cimport MPI as mpi
 
 import numpy as np
 cimport numpy as np
@@ -9,7 +10,7 @@ import sys
 
 from libc.stdlib cimport free, calloc
 
-from bnz.utils cimport free_3d_array, mini,maxi, print_root
+from bnz.utils cimport free_3d_array, calloc_3d_array, print_root
 from bnz.io.read_config import read_param
 from hilbertcurve import HilbertCurve
 
@@ -19,9 +20,91 @@ ELSE:
   np_real = np.float64
 
 
-#=========================================================
+#-----------------------------------------------------------
 
-# Grid class, contains parameters and data of local grid.
+cdef class GridCoord:
+
+  def __cinit__(self, bytes usr_dir):
+
+    # box size in cells
+    self.Nact_glob[0] = read_param("computation","Nx",'i',usr_dir)
+    self.Nact_glob[1] = read_param("computation","Ny",'i',usr_dir)
+    self.Nact_glob[2] = read_param("computation","Nz",'i',usr_dir)
+
+    cdef int ndim=1
+    IF D2D: ndim += 1
+    IF D3D: ndim += 1
+
+    if ndim==1:
+      if self.Nact_glob[1] != 1:
+        print_root('Error: cannot set Ny>1 in 1D.')
+        sys.exit()
+
+    if ndim==2:
+      if self.Nact_glob[2] != 1:
+        print_root('Error: cannot set Nz>1 in 2D/1D.')
+        sys.exit()
+
+    # Set the number of ghost cells.
+
+    Nfilt = read_param("computation", "Nfilt", 'i',usr_dir)
+    self.ng = IMIN(4, IMAX(1, Nfilt))
+
+    self.Ntot_glob[0] = self.Nact_glob[0] + 2*self.ng+1
+    IF D2D: self.Ntot_glob[1] = self.Nact_glob[1] + 2*self.ng+1
+    ELSE:   self.Ntot_glob[1] = 1
+    IF D3D: self.Ntot_glob[2] = self.Nact_glob[2] + 2*self.ng+1
+    ELSE:   self.Ntot_glob[2] = 1
+
+    for n in range(3):
+      self.lmin[n] = 0.
+      self.lmax[n] = <real>self.Ntot_glob[n]
+
+    # Set min/max indices of active cells.
+    # (will be reset when domain decomposition is used)
+
+    self.i1, self.i2 = self.ng, self.Nact_glob[0] + self.ng - 1
+
+    IF D2D: self.j1, self.j2 = self.ng, self.Nact_glob[1] + self.ng - 1
+    ELSE: self.j1, self.j2 = 0,0
+
+    IF D3D: self.k1, self.k2 = self.ng, self.Nact_glob[2] + self.ng - 1
+    ELSE: self.k1, self.k2 = 0,0
+
+    # Set the same local size as global for now.
+    # (will be reset when domain decomposition is used)
+
+    for k in range(3):
+      self.Nact[k] = self.Nact_glob[k]
+      self.Ntot[k] = self.Ntot_glob[k]
+
+    self.rank=0
+    for k in range(3):
+      self.pos[k]=0
+      self.size[k]=1
+      self.size_tot=1
+    self.ranks=NULL
+
+
+# -----------------------------------------------------------
+
+cdef class GridData:
+
+  def __cinit__(self, GridCoord gc):
+
+    #cdef GridScratch scr =   grid.scr
+
+    sh_3 = (3, gc.Ntot[2], gc.Ntot[1], gc.Ntot[0])
+
+    gd.efld = np.zeros(sh_3, dtype=np_real)
+    gd.bfld = np.zeros(sh_3, dtype=np_real)
+    gd.curr = np.zeros(sh_3, dtype=np_real)
+
+    # IF MPI:
+    #   scr.ce_tmp = np.zeros(sh_3, dtype=np_real)
+
+
+# ----------------------------------------------------------
 
 cdef class BnzGrid:
 
@@ -29,104 +112,45 @@ cdef class BnzGrid:
 
     self.usr_dir = usr_dir
 
-    #-----------------------------------------------------------
+    self.coord = GridCoord(usr_dir)
 
-    cdef GridCoord *gc = &(self.coord)
+    # set index-related parameters
+    init_params(self.coord, usr_dir)
 
-    # box size in cells
-    gc.Nact_glob[0] = read_param("computation","Nx",'i',usr_dir)
-    gc.Nact_glob[1] = read_param("computation","Ny",'i',usr_dir)
-    gc.Nact_glob[2] = read_param("computation","Nz",'i',usr_dir)
+    # do domain decomposition
+    IF MPI: domain_decomp(self.coord, usr_dir)
 
-    cdef ints ndim=1
-    IF D2D: ndim += 1
-    IF D3D: ndim += 1
+    # init boundary conditions
+    self.bc = GridBc(self.coord, usr_dir)
 
-    if ndim==1:
-      if gc.Nact_glob[1] != 1:
-        print_root('Error: cannot set Ny>1 in 1D.')
-        sys.exit()
+    # init data arrays
+    self.data = GridData(self.coord)
 
-    if ndim==2:
-      if gc.Nact_glob[2] != 1:
-        print_root('Error: cannot set Nz>1 in 2D/1D.')
-        sys.exit()
-
-    # Set the number of ghost cells.
-
-    Nfilt = read_param("computation", "Nfilt", 'i',usr_dir)
-    gc.ng = mini(4, maxi(1, Nfilt))
-
-    gc.Ntot_glob[0] = gc.Nact_glob[0] + 2*gc.ng+1
-    IF D2D: gc.Ntot_glob[1] = gc.Nact_glob[1] + 2*gc.ng+1
-    ELSE:   gc.Ntot_glob[1] = 1
-    IF D3D: gc.Ntot_glob[2] = gc.Nact_glob[2] + 2*gc.ng+1
-    ELSE:   gc.Ntot_glob[2] = 1
-
-    for n in range(3):
-      gc.lmin[n] = 0.
-      gc.lmax[n] = <real>gc.Ntot_glob[n]
-
-    # Set min/max indices of active cells.
-    # (will be reset when domain decomposition is used)
-
-    gc.i1, gc.i2 = gc.ng, gc.Nact_glob[0] + gc.ng - 1
-
-    IF D2D: gc.j1, gc.j2 = gc.ng, gc.Nact_glob[1] + gc.ng - 1
-    ELSE: gc.j1, gc.j2 = 0,0
-
-    IF D3D: gc.k1, gc.k2 = gc.ng, gc.Nact_glob[2] + gc.ng - 1
-    ELSE: gc.k1, gc.k2 = 0,0
-
-    # Set the same local size as global for now.
-    # (will be reset when domain decomposition is used)
-
-    for k in range(3):
-      gc.Nact[k] = gc.Nact_glob[k]
-      gc.Ntot[k] = gc.Ntot_glob[k]
-
-    gc.rank=0
-    for k in range(3):
-      gc.pos[k]=0
-      gc.size[k]=1
-      gc.size_tot=1
-
-
-  # ----------------------------------------------------------------------
-
-  cdef void init(self):
-
-    IF MPI: domain_decomp(self.coord)
-    self.bc = GridBc(self.coord, self.usr_dir)
-    self.init_data(self)
-
-
-  # ----------------------------------------------------------------------
+    # init particles
+    self.prts = BnzParticles(self.coord, usr_dir)
 
   def __dealloc__(self):
 
-    cdef GridCoord *gc = &(self.coord)
-
-    IF MPI: free_3d_array(gc.ranks)
+    IF MPI: free_3d_array(self.coord.ranks)
 
 
 # ----------------------------------------------------------------------
 
 IF MPI:
 
-  cdef void domain_decomp(GridCoord *gc):
+  cdef void domain_decomp(GridCoord *gc, bytes usr_grid):
 
     cdef mpi.Comm comm = mpi.COMM_WORLD
 
     cdef:
-      ints i,k, size0
+      int i,k, size0
       int p
       long[:,::1] crds
 
     # read number of MPI blocks in each direction
-    gc.size[0] = read_param("computation", "nblocks_x", 'i', gc.usr_dir)
-    gc.size[1] = read_param("computation", "nblocks_y", 'i', gc.usr_dir)
-    gc.size[2] = read_param("computation", "nblocks_z", 'i', gc.usr_dir)
+    gc.size[0] = read_param("computation", "nblocks_x", 'i', usr_dir)
+    gc.size[1] = read_param("computation", "nblocks_y", 'i', usr_dir)
+    gc.size[2] = read_param("computation", "nblocks_z", 'i', usr_dir)
 
     gc.rank = comm.Get_rank()
     size0 = comm.Get_size()
@@ -196,7 +220,7 @@ IF MPI:
     crds = np.empty((gc.size_tot, 3), dtype=np.int_)  # int_ is same as C long
     comm.Allgather([np.array(gc.pos), mpi.LONG], [crds, mpi.LONG])
 
-    gc.ranks = <ints ***>calloc_3d_array(gc.size[0], gc.size[1], gc.size[2], sizeof(ints))
+    gc.ranks = <int ***>calloc_3d_array(gc.size[0], gc.size[1], gc.size[2], sizeof(int))
 
     for i in range(gc.size_tot):
       gc.ranks[crds[i,0], crds[i,1], crds[i,2]] = i
@@ -245,24 +269,3 @@ IF MPI:
 
 
 # end of IF MPI
-
-
-# ----------------------------------------------------------------------
-
-cdef void init_data(BnzGrid grid):
-
-  cdef:
-    GridCoord  *gc  = &(grid.coord)
-    GridData    gd  =   grid.data
-    GridScratch scr =   grid.scr
-
-  gd = GridData()
-
-  sh_3 = (3, gc.Ntot[2], gc.Ntot[1], gc.Ntot[0])
-
-  gd.ee = np.zeros(sh_3, dtype=np_real)
-  gd.bf = np.zeros(sh_3, dtype=np_real)
-  gd.ce = np.zeros(sh_3, dtype=np_real)
-
-  IF MPI:
-    scr.ce_tmp = np.zeros(sh_3, dtype=np_real)

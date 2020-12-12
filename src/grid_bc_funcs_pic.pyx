@@ -4,7 +4,6 @@ import numpy as np
 cimport numpy as np
 from cython.parallel import prange, parallel
 
-from libc.math cimport sqrt,floor,ceil,log,exp,sin,cos,pow,fabs,fmin,fmax
 from utils_bc cimport *
 
 IF MPI:
@@ -16,9 +15,11 @@ IF MPI:
 
 # ==============================================================================
 
-cdef list get_bvar_fld_list(GridData gd, ints[::1] bvars):
+cdef list get_bvar_fld_list(GridData gd, int1d bvars):
 
-  cdef ints bvar
+  # Form a list of references to 3D arrays that need to be updated.
+
+  cdef int bvar
   flds=[]
 
   for bvar in bvars:
@@ -40,13 +41,11 @@ cdef list get_bvar_fld_list(GridData gd, ints[::1] bvars):
 
 # Periodic MHD BC.
 
-cdef void x1_grid_bc_periodic(BnzSim sim, ints[::1] bvars):
+cdef void x1_grid_bc_periodic(GridData gd, GridCoord *gc,  BnzIntegr integr, int1d bvars):
 
   cdef:
-    GridCoord gc=sim.grid.coord
-    GridData gd=sim.grid.data
-    ints n, ng=gc.ng, i1=gc.i1, i2=gc.i2
-    ints nbvar=bvars.size
+    int n, ng=gc.ng, i1=gc.i1, i2=gc.i2
+    int nbvar=bvars.size
 
   flds = get_bvar_fld_list(gd, bvars)
 
@@ -54,13 +53,11 @@ cdef void x1_grid_bc_periodic(BnzSim sim, ints[::1] bvars):
     copy_layer_x(flds[n], gc.i1-gc.ng, gc.i2-gc.ng+1, gc.ng, gc.Ntot)
 
 
-cdef void x2_grid_bc_periodic(BnzSim sim, ints[::1] bvars):
+cdef void x2_grid_bc_periodic(GridData gd, GridCoord *gc,  BnzIntegr integr, int1d bvars):
 
   cdef:
-    GridCoord gc=sim.grid.coord
-    GridData gd=sim.grid.data
-    ints n, ng=gc.ng, i1=gc.i1, i2=gc.i2
-    ints nbvar=bvars.size
+    int n, ng=gc.ng, i1=gc.i1, i2=gc.i2
+    int nbvar=bvars.size
   ng = ng+1
 
   flds = get_bvar_fld_list(gd, bvars)
@@ -69,13 +66,11 @@ cdef void x2_grid_bc_periodic(BnzSim sim, ints[::1] bvars):
     copy_layer_x(flds[n], i2+1, i1, ng, gc.Ntot)
 
 
-cdef void y1_grid_bc_periodic(BnzSim sim, ints[::1] bvars):
+cdef void y1_grid_bc_periodic(GridData gd, GridCoord *gc,  BnzIntegr integr, int1d bvars):
 
   cdef:
-    GridCoord gc=sim.grid.coord
-    GridData gd=sim.grid.data
-    ints n, ng=gc.ng, j1=gc.j1, j2=gc.j2
-    ints nbvar=bvars.size
+    int n, ng=gc.ng, j1=gc.j1, j2=gc.j2
+    int nbvar=bvars.size
 
   flds = get_bvar_fld_list(gd, bvars)
 
@@ -83,13 +78,11 @@ cdef void y1_grid_bc_periodic(BnzSim sim, ints[::1] bvars):
     copy_layer_y(flds[n], j1-ng, j2-ng+1, ng, gc.Ntot)
 
 
-cdef void y2_grid_bc_periodic(BnzSim sim, ints[::1] bvars):
+cdef void y2_grid_bc_periodic(GridData gd, GridCoord *gc,  BnzIntegr integr, int1d bvars):
 
   cdef:
-    GridCoord gc=sim.grid.coord
-    GridData gd=sim.grid.data
-    ints n, ng=gc.ng, j1=gc.j1, j2=gc.j2
-    ints nbvar=bvars.size
+    int n, ng=gc.ng, j1=gc.j1, j2=gc.j2
+    int nbvar=bvars.size
   ng = ng+1
 
   flds = get_bvar_fld_list(gd, bvars)
@@ -98,13 +91,11 @@ cdef void y2_grid_bc_periodic(BnzSim sim, ints[::1] bvars):
     copy_layer_y(flds[n], j2+1, j1, ng, gc.Ntot)
 
 
-cdef void z1_grid_bc_periodic(BnzSim sim, ints[::1] bvars):
+cdef void z1_grid_bc_periodic(GridData gd, GridCoord *gc,  BnzIntegr integr, int1d bvars):
 
   cdef:
-    GridCoord gc=sim.grid.coord
-    GridData gd=sim.grid.data
-    ints n, ng=gc.ng, k1=gc.k1, k2=gc.k2
-    ints nbvar=bvars.size
+    int n, ng=gc.ng, k1=gc.k1, k2=gc.k2
+    int nbvar=bvars.size
 
   flds = get_bvar_fld_list(gd, bvars)
 
@@ -112,13 +103,11 @@ cdef void z1_grid_bc_periodic(BnzSim sim, ints[::1] bvars):
     copy_layer_z(flds[n], k1-ng, k2-ng+1, ng, gc.Ntot)
 
 
-cdef void z2_grid_bc_periodic(BnzSim sim, ints[::1] bvars):
+cdef void z2_grid_bc_periodic(GridData gd, GridCoord *gc,  BnzIntegr integr, int1d bvars):
 
   cdef:
-    GridCoord gc=sim.grid.coord
-    GridData gd=sim.grid.data
-    ints n, ng=gc.ng, k1=gc.k1, k2=gc.k2
-    ints nbvar=bvars.size
+    int n, ng=gc.ng, k1=gc.k1, k2=gc.k2
+    int nbvar=bvars.size
   ng = ng+1
 
   flds = get_bvar_fld_list(gd, bvars)
@@ -132,13 +121,11 @@ cdef void z2_grid_bc_periodic(BnzSim sim, ints[::1] bvars):
 
 # Outflow BC.
 
-cdef void x1_grid_bc_outflow(BnzSim sim, ints[::1] bvars):
+cdef void x1_grid_bc_outflow(GridData gd, GridCoord *gc,  BnzIntegr integr, int1d bvars):
 
   cdef:
-    GridCoord gc=sim.grid.coord
-    GridData gd=sim.grid.data
-    ints n, ng=gc.ng, i1=gc.i1
-    ints nbvar=bvars.size
+    int n, ng=gc.ng, i1=gc.i1
+    int nbvar=bvars.size
 
   flds = get_bvar_fld_list(gd, bvars)
 
@@ -146,13 +133,11 @@ cdef void x1_grid_bc_outflow(BnzSim sim, ints[::1] bvars):
     prolong_x(flds[n], 0, i1-1, ng, gc.Ntot)
 
 
-cdef void x2_grid_bc_outflow(BnzSim sim, ints[::1] bvars):
+cdef void x2_grid_bc_outflow(GridData gd, GridCoord *gc,  BnzIntegr integr, int1d bvars):
 
   cdef:
-    GridCoord gc=sim.grid.coord
-    GridData gd=sim.grid.data
-    ints n, ng=gc.ng, i2=gc.i2
-    ints nbvar=bvars.size
+    int n, ng=gc.ng, i2=gc.i2
+    int nbvar=bvars.size
   ng=ng+1
 
   flds = get_bvar_fld_list(gd, bvars)
@@ -166,13 +151,11 @@ cdef void x2_grid_bc_outflow(BnzSim sim, ints[::1] bvars):
     #   prolong_x(flds[n], 1, i2+2, ng-1, gc.Ntot)
 
 
-cdef void y1_grid_bc_outflow(BnzSim sim, ints[::1] bvars):
+cdef void y1_grid_bc_outflow(GridData gd, GridCoord *gc,  BnzIntegr integr, int1d bvars):
 
   cdef:
-    GridCoord gc=sim.grid.coord
-    GridData gd=sim.grid.data
-    ints n, ng=gc.ng, j1=gc.j1
-    ints nbvar=bvars.size
+    int n, ng=gc.ng, j1=gc.j1
+    int nbvar=bvars.size
 
   flds = get_bvar_fld_list(gd, bvars)
 
@@ -180,13 +163,11 @@ cdef void y1_grid_bc_outflow(BnzSim sim, ints[::1] bvars):
     prolong_y(flds[n], 0, j1-1, ng, gc.Ntot)
 
 
-cdef void y2_grid_bc_outflow(BnzSim sim, ints[::1] bvars):
+cdef void y2_grid_bc_outflow(GridData gd, GridCoord *gc,  BnzIntegr integr, int1d bvars):
 
   cdef:
-    GridCoord gc=sim.grid.coord
-    GridData gd=sim.grid.data
-    ints n, ng=gc.ng, j2=gc.j2
-    ints nbvar=bvars.size
+    int n, ng=gc.ng, j2=gc.j2
+    int nbvar=bvars.size
   ng=ng+1
 
   flds = get_bvar_fld_list(gd, bvars)
@@ -200,13 +181,11 @@ cdef void y2_grid_bc_outflow(BnzSim sim, ints[::1] bvars):
     #   prolong_y(flds[n], 1, j2+2, ng-1, gc.Ntot)
 
 
-cdef void z1_grid_bc_outflow(BnzSim sim, ints[::1] bvars):
+cdef void z1_grid_bc_outflow(GridData gd, GridCoord *gc,  BnzIntegr integr, int1d bvars):
 
   cdef:
-    GridCoord gc=sim.grid.coord
-    GridData gd=sim.grid.data
-    ints n, ng=gc.ng, k1=gc.k1
-    ints nbvar=bvars.size
+    int n, ng=gc.ng, k1=gc.k1
+    int nbvar=bvars.size
 
   flds = get_bvar_fld_list(gd, bvars)
 
@@ -214,13 +193,11 @@ cdef void z1_grid_bc_outflow(BnzSim sim, ints[::1] bvars):
     prolong_z(flds[n], 0, k1, ng, gc.Ntot)
 
 
-cdef void z2_grid_bc_outflow(BnzSim sim, ints[::1] bvars):
+cdef void z2_grid_bc_outflow(GridData gd, GridCoord *gc,  BnzIntegr integr, int1d bvars):
 
   cdef:
-    GridCoord gc=sim.grid.coord
-    GridData gd=sim.grid.data
-    ints n, ng=gc.ng, k2=gc.k2
-    ints nbvar=bvars.size
+    int n, ng=gc.ng, k2=gc.k2
+    int nbvar=bvars.size
   ng=ng+1
 
   flds = get_bvar_fld_list(gd, bvars)
@@ -239,13 +216,11 @@ cdef void z2_grid_bc_outflow(BnzSim sim, ints[::1] bvars):
 
 # Conductive BC for data grids.
 
-cdef void x1_grid_bc_conduct(BnzSim sim, ints[::1] bvars):
+cdef void x1_grid_bc_conduct(GridData gd, GridCoord *gc,  BnzIntegr integr, int1d bvars):
 
   cdef:
-    GridCoord gc=sim.grid.coord
-    GridData gd=sim.grid.data
-    ints n, ng=gc.ng, i1=gc.i1
-    ints nbvar=bvars.size
+    int n, ng=gc.ng, i1=gc.i1
+    int nbvar=bvars.size
 
   flds = get_bvar_fld_list(gd, bvars)
 
@@ -266,13 +241,11 @@ cdef void x1_grid_bc_conduct(BnzSim sim, ints[::1] bvars):
 
 
 
-cdef void x2_grid_bc_conduct(BnzSim sim, ints[::1] bvars):
+cdef void x2_grid_bc_conduct(GridData gd, GridCoord *gc,  BnzIntegr integr, int1d bvars):
 
   cdef:
-    GridCoord gc=sim.grid.coord
-    GridData gd=sim.grid.data
-    ints n, i2=gc.i2, ng=gc.ng+1
-    ints nbvar=bvars.size
+    int n, i2=gc.i2, ng=gc.ng+1
+    int nbvar=bvars.size
 
   flds = get_bvar_fld_list(gd, bvars)
 
@@ -291,13 +264,11 @@ cdef void x2_grid_bc_conduct(BnzSim sim, ints[::1] bvars):
 #-------------------------------------------------------------------------------
 
 
-cdef void y1_grid_bc_conduct(BnzSim sim, ints[::1] bvars):
+cdef void y1_grid_bc_conduct(GridData gd, GridCoord *gc,  BnzIntegr integr, int1d bvars):
 
   cdef:
-    GridCoord gc=sim.grid.coord
-    GridData gd=sim.grid.data
-    ints n, j1=gc.j1, ng=gc.ng
-    ints nbvar=bvars.size
+    int n, j1=gc.j1, ng=gc.ng
+    int nbvar=bvars.size
 
   flds = get_bvar_fld_list(gd, bvars)
 
@@ -313,13 +284,11 @@ cdef void y1_grid_bc_conduct(BnzSim sim, ints[::1] bvars):
     #   copy_reflect_layer_y(flds[n], -1, j1-ng, j1, ng, gc.Ntot)
 
 
-cdef void y2_grid_bc_conduct(BnzSim sim, ints[::1] bvars):
+cdef void y2_grid_bc_conduct(GridData gd, GridCoord *gc,  BnzIntegr integr, int1d bvars):
 
   cdef:
-    GridCoord gc=sim.grid.coord
-    GridData gd=sim.grid.data
-    ints n, j2=gc.j2, ng=gc.ng+1
-    ints nbvar=bvars.size
+    int n, j2=gc.j2, ng=gc.ng+1
+    int nbvar=bvars.size
 
   flds = get_bvar_fld_list(gd, bvars)
 
@@ -338,13 +307,11 @@ cdef void y2_grid_bc_conduct(BnzSim sim, ints[::1] bvars):
 #-------------------------------------------------------------------------------
 
 
-cdef void z1_grid_bc_conduct(BnzSim sim, ints[::1] bvars):
+cdef void z1_grid_bc_conduct(GridData gd, GridCoord *gc,  BnzIntegr integr, int1d bvars):
 
   cdef:
-    GridCoord gc=sim.grid.coord
-    GridData gd=sim.grid.data
-    ints n, k1=gc.k1, ng=gc.ng
-    ints nbvar=bvars.size
+    int n, k1=gc.k1, ng=gc.ng
+    int nbvar=bvars.size
 
   flds = get_bvar_fld_list(gd, bvars)
 
@@ -360,13 +327,11 @@ cdef void z1_grid_bc_conduct(BnzSim sim, ints[::1] bvars):
     #   copy_reflect_layer_z(flds[n], -1, k1-ng, k1, ng, gc.Ntot)
 
 
-cdef void z2_grid_bc_conduct(BnzSim sim, ints[::1] bvars):
+cdef void z2_grid_bc_conduct(GridData gd, GridCoord *gc,  BnzIntegr integr, int1d bvars):
 
   cdef:
-    GridCoord gc=sim.grid.coord
-    GridData gd=sim.grid.data
-    ints n, k2=gc.k2, ng=gc.ng+1
-    ints nbvar = bvars.size
+    int n, k2=gc.k2, ng=gc.ng+1
+    int nbvar = bvars.size
 
   flds = get_bvar_fld_list(gd, bvars)
 
@@ -386,22 +351,21 @@ cdef void z2_grid_bc_conduct(BnzSim sim, ints[::1] bvars):
 
 IF MPI:
 
-  cdef void pack_grid_all(BnzGrid grid, ints1d bvars, real1d buf, int ax, int side):
+  cdef void pack_grid_all(GridData gd, GridCoord *gc,  int1d bvars, real1d buf, int ax, int side):
 
     cdef:
-      GridCoord *gc = grid.coord
-      GridData gd = grid.data
-      ints n, offset=0
-      ints nx=gc.Ntot[0], ny=gc.Ntot[1], nz=gc.Ntot[2], ng=gc.ng
-      ints i1=gc.i1, i2=gc.i2
-      ints j1=gc.j1, j2=gc.j2
-      ints k1=gc.k1, k2=gc.k2
-      ints nbvar = bvars.size
-      ints1d lims, pack_order
+      int n
+      long offset
+      int nx=gc.Ntot[0], ny=gc.Ntot[1], nz=gc.Ntot[2], ng=gc.ng
+      int i1=gc.i1, i2=gc.i2
+      int j1=gc.j1, j2=gc.j2
+      int k1=gc.k1, k2=gc.k2
+      int nbvar = bvars.size
+      int1d lims, pack_order
 
     flds = get_bvar_fld_list(gd, bvars)
-
     pack_order = np.ones(3, dtype=np.intp)
+    offset=0
 
     if side==0:
       if ax==0:   lims = np.array([i1,i1+ng, 0,ny-1, 0,nz-1])
@@ -420,18 +384,18 @@ IF MPI:
 
   # -----------------------------------------------------------------------------
 
-  cdef void unpack_grid_all(BnzGrid grid, ints1d bvars, real1d buf, int ax, int side):
+  cdef void unpack_grid_all(GridData gd, GridCoord *gc,  int1d bvars, real1d buf, int ax, int side):
 
     cdef:
-      GridCoord *gc = grid.coord
-      GridData gd = grid.data
-      ints n, offset=0
-      ints nx=gc.Ntot[0], ny=gc.Ntot[1], nz=gc.Ntot[2], ng=gc.ng
-      ints i1=gc.i1, i2=gc.i2, j1=gc.j1, j2=gc.j2, k1=gc.k1, k2=gc.k2
-      ints nbvar = bvars.size
-      ints1d lims
+      int n
+      long offset
+      int nx=gc.Ntot[0], ny=gc.Ntot[1], nz=gc.Ntot[2], ng=gc.ng
+      int i1=gc.i1, i2=gc.i2, j1=gc.j1, j2=gc.j2, k1=gc.k1, k2=gc.k2
+      int nbvar = bvars.size
+      int1d lims
 
     flds = get_bvar_fld_list(gd, bvars)
+    offset=0
 
     # Now treat ordinary MPI boundaries.
 

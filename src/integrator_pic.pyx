@@ -33,6 +33,9 @@ cdef class BnzIntegr:
     # set pointers to user-defined physics functions (e.g. gravitational potential)
     set_phys_funcs_user(self)
 
+    self.time=0.
+    self.nstep=0
+
 
   def __dealloc__(self):
 
