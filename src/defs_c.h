@@ -1,12 +1,9 @@
-#include <stdint.h>
-#include <math.h>
-
 #ifndef DEFINITIONS_H
 #define DEFINITIONS_H
 
-// fixed-length integer type
-// typedef intptr_t ints;
-// floating-point type depending on precision
+#include <stdint.h>
+#include <math.h>
+
 #if SPREC
 typedef float real;
 #else
@@ -30,8 +27,6 @@ typedef double real;
 #endif
 
 
-//===========================================================
-
 #define NVAR 9
 #define NPRT_PROP 10
 // indices of electromagnetic fields and particle currents
@@ -41,9 +36,8 @@ enum {EX=0,EY,EZ, BX,BY,BZ, JX,JY,JZ};
 enum {XAX,YAX,ZAX};
 
 
-// ====================================================================
-
 #define B_PI 3.14159265
+#define SMALL_NUM 1.0e-20
 #define SQR(x) ((x) * (x))
 #define CUBE(x) ((x) * (x) * (x))
 #define IMIN(a,b) ( ((a) < (b)) ? (a) : (b) )

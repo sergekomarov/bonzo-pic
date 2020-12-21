@@ -10,7 +10,7 @@ from cython.parallel import prange, parallel, threadid
 
 from libc.stdio cimport printf
 
-from bnz.utils cimport print_root
+from bnz.util cimport print_root
 
 
 cdef void print_nrg(BnzGrid grid, BnzIntegr integr):

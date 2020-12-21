@@ -13,7 +13,7 @@ from bnz.problem.problem cimport set_phys_funcs_user
 
 cdef class BnzIntegr:
 
-  def __cinit__(self, bytes usr_dir):
+  def __cinit__(self, str usr_dir):
 
     # cdef:
     #   GridCoord gc = self.coord

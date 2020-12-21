@@ -4,16 +4,13 @@ import numpy as np
 cimport numpy as np
 from cython.parallel import prange, parallel
 
-from libc.math cimport sqrt,floor,ceil,log,exp,sin,cos,pow,fabs,fmin,fmax
-
-
-#----------------------------------------------------------------
+# ----------------------------------------------------------------
 
 cdef inline void copy_layer_x(real3d A,
-                       ints ib, ints ib0, int width,
-                       ints Ntot[3]) nogil:
+                       int ib, int ib0, int width,
+                       int Ntot[3]) nogil:
 
-  cdef ints j,k,g
+  cdef int j,k,g
 
   for k in range(Ntot[2]):
     for j in range(Ntot[1]):
@@ -22,10 +19,10 @@ cdef inline void copy_layer_x(real3d A,
         A[k,j,ib+g] = A[k,j,ib0+g]
 
 cdef inline void copy_layer_y(real3d A,
-                       ints js, ints js0, int width,
-                       ints Ntot[3]) nogil:
+                       int js, int js0, int width,
+                       int Ntot[3]) nogil:
 
-  cdef ints i,k,g
+  cdef int i,k,g
 
   for k in range(Ntot[2]):
     for g in range(width):
@@ -34,10 +31,10 @@ cdef inline void copy_layer_y(real3d A,
         A[k,js+g,i] = A[k,js0+g,i]
 
 cdef inline void copy_layer_z(real3d A,
-                       ints ks, ints ks0, int width,
-                       ints Ntot[3]) nogil:
+                       int ks, int ks0, int width,
+                       int Ntot[3]) nogil:
 
-  cdef ints i,j,g
+  cdef int i,j,g
 
   for g in range(width):
     for j in range(Ntot[1]):
@@ -46,15 +43,15 @@ cdef inline void copy_layer_z(real3d A,
         A[ks+g,j,i] = A[ks0+g,j,i]
 
 
-# ===========================================================================
+# ----------------------------------------------------------------
 
 cdef inline void copy_reflect_layer_x(real3d A, int sgn,
-                       ints ib, ints ib0, int width,
-                       ints Ntot[3]) nogil:
+                       int ib, int ib0, int width,
+                       int Ntot[3]) nogil:
 
   cdef:
-    ints j,k,g
-    ints ib1 = ib+width-1
+    int j,k,g
+    int ib1 = ib+width-1
 
   for k in range(Ntot[2]):
     for j in range(Ntot[1]):
@@ -63,12 +60,12 @@ cdef inline void copy_reflect_layer_x(real3d A, int sgn,
         A[k,j,ib1-g] = sgn * A[k,j,ib0+g]
 
 cdef inline void copy_reflect_layer_y(real3d A, int sgn,
-                       ints js, ints js0, int width,
-                       ints Ntot[3]) nogil:
+                       int js, int js0, int width,
+                       int Ntot[3]) nogil:
 
   cdef:
-    ints i,k,g
-    ints js1 = js+width-1
+    int i,k,g
+    int js1 = js+width-1
 
   for k in range(Ntot[2]):
     for g in range(width):
@@ -77,12 +74,12 @@ cdef inline void copy_reflect_layer_y(real3d A, int sgn,
         A[k,js1-g,i] = sgn * A[k,js0+g,i]
 
 cdef inline void copy_reflect_layer_z(real3d A, int sgn,
-                       ints ks, ints ks0, int width,
-                       ints Ntot[3]) nogil:
+                       int ks, int ks0, int width,
+                       int Ntot[3]) nogil:
 
   cdef:
-    ints i,j,g
-    ints ks1 = ks+width-1
+    int i,j,g
+    int ks1 = ks+width-1
 
   for g in range(width):
     for j in range(Ntot[1]):
@@ -91,14 +88,13 @@ cdef inline void copy_reflect_layer_z(real3d A, int sgn,
         A[ks1-g,j,i] = sgn * A[ks0+g,j,i]
 
 
-# ===========================================================================
-
+# ----------------------------------------------------------------
 
 cdef inline void copy_add_layer_x(real3d A,
-                       ints ib, ints ib0, int width,
-                       ints Ntot[3]) nogil:
+                       int ib, int ib0, int width,
+                       int Ntot[3]) nogil:
 
-  cdef ints j,k,g
+  cdef int j,k,g
 
   for k in range(Ntot[2]):
     for j in range(Ntot[1]):
@@ -106,10 +102,10 @@ cdef inline void copy_add_layer_x(real3d A,
         A[k,j,ib+g] = A[k,j,ib+g] + A[k,j,ib0+g]
 
 cdef inline void copy_add_layer_y(real3d A,
-                       ints js, ints js0, int width,
-                       ints Ntot[3]) nogil:
+                       int js, int js0, int width,
+                       int Ntot[3]) nogil:
 
-  cdef ints i,g,k
+  cdef int i,g,k
 
   for k in range(Ntot[2]):
     for g in range(width):
@@ -117,10 +113,10 @@ cdef inline void copy_add_layer_y(real3d A,
         A[k,js+g,i] = A[k,js+g,i] + A[k,js0+g,i]
 
 cdef inline void copy_add_layer_z(real3d A,
-                       ints ks, ints ks0, int width,
-                       ints Ntot[3]) nogil:
+                       int ks, int ks0, int width,
+                       int Ntot[3]) nogil:
 
-  cdef ints i,j,k,g
+  cdef int i,j,k,g
 
   for g in range(width):
     for j in range(Ntot[1]):
@@ -129,15 +125,14 @@ cdef inline void copy_add_layer_z(real3d A,
         A[ks+g,j,i] = A[ks+g,j,i] + A[ks0+g,j,i]
 
 
-
-# ===========================================================================
+# --------------------------------------------------------------------
 
 cdef inline void copy_add_reflect_layer_x(real3d A, int sgn,
-                       ints ib, ints ib0, int width, ints Ntot[3]) nogil:
+                       int ib, int ib0, int width, int Ntot[3]) nogil:
 
   cdef:
-    ints i,j,k,g
-    ints ib1 = ib+width-1
+    int i,j,k,g
+    int ib1 = ib+width-1
 
   for k in range(Ntot[2]):
     for j in range(Ntot[1]):
@@ -146,11 +141,11 @@ cdef inline void copy_add_reflect_layer_x(real3d A, int sgn,
         A[k,j,ib1-g] = A[k,j,ib1-g] + sgn*A[k,j,ib0+g]
 
 cdef inline void copy_add_reflect_layer_y(real3d A, int sgn,
-                       ints js, ints js0, int width, ints Ntot[3]) nogil:
+                       int js, int js0, int width, int Ntot[3]) nogil:
 
   cdef:
-    ints i,j,k,g
-    ints js1 = js+width-1
+    int i,j,k,g
+    int js1 = js+width-1
 
   for k in range(Ntot[2]):
     for g in range(width):
@@ -159,11 +154,11 @@ cdef inline void copy_add_reflect_layer_y(real3d A, int sgn,
         A[k,js1-g,i] = A[k,js1-g,i] + sgn * A[k,js0+g,i]
 
 cdef inline void copy_add_reflect_layer_z(real3d A, int sgn,
-                       ints ks, ints ks0, int width, ints Ntot[3]) nogil:
+                       int ks, int ks0, int width, int Ntot[3]) nogil:
 
   cdef:
-    ints i,j,k,g
-    ints ks1 = ks+width-1
+    int i,j,k,g
+    int ks1 = ks+width-1
 
   for g in range(width):
     for j in range(Ntot[1]):
@@ -172,14 +167,12 @@ cdef inline void copy_add_reflect_layer_z(real3d A, int sgn,
         A[ks1-g,j,i] = A[ks1-g,j,i] + sgn * A[ks0+g,j,i]
 
 
-
-# ==========================================================================
-
+# ----------------------------------------------------------------
 
 cdef inline void set_layer_x(real3d A, double set2,
-                       ints ib, int width, ints Ntot[3]) nogil:
+                       int ib, int width, int Ntot[3]) nogil:
 
-  cdef ints i,j,k,g
+  cdef int i,j,k,g
 
   for k in range(Ntot[2]):
     for j in range(Ntot[1]):
@@ -188,9 +181,9 @@ cdef inline void set_layer_x(real3d A, double set2,
         A[k,j,ib+g] = set2
 
 cdef inline void set_layer_y(real3d A, double set2,
-                       ints js, int width, ints Ntot[3]) nogil:
+                       int js, int width, int Ntot[3]) nogil:
 
-  cdef ints i,j,k,g
+  cdef int i,j,k,g
 
   for k in range(Ntot[2]):
     for g in range(width):
@@ -199,9 +192,9 @@ cdef inline void set_layer_y(real3d A, double set2,
         A[k,js+g,i] = set2
 
 cdef inline void set_layer_z(real3d A, double set2,
-                       ints ks, int width, ints Ntot[3]) nogil:
+                       int ks, int width, int Ntot[3]) nogil:
 
-  cdef ints i,j,k,g
+  cdef int i,j,k,g
 
   for g in range(width):
     for j in range(Ntot[1]):
@@ -210,18 +203,16 @@ cdef inline void set_layer_z(real3d A, double set2,
         A[ks+g,j,i] = set2
 
 
-
-# ==========================================================================
-
+# ----------------------------------------------------------------
 
 cdef inline void prolong_x(real3d A, int LR,
-                       ints ib0, int width, ints Ntot[3]) nogil:
+                       int ib0, int width, int Ntot[3]) nogil:
 
   # LR=0: prolong to left, LR=1: to right
   cdef:
-    ints i,j,k,g
-    ints ib01 = ib0 + 1 - 2*LR
-    ints ib1 = ib01 - (1-LR) * width + LR
+    int i,j,k,g
+    int ib01 = ib0 + 1 - 2*LR
+    int ib1 = ib01 - (1-LR) * width + LR
 
   for k in range(Ntot[2]):
     for j in range(Ntot[1]):
@@ -230,12 +221,12 @@ cdef inline void prolong_x(real3d A, int LR,
         A[k,j,ib1+g] = A[k,j,ib01]
 
 cdef inline void prolong_y(real3d A, int LR,
-                       ints jb0, int width, ints Ntot[3]) nogil:
+                       int jb0, int width, int Ntot[3]) nogil:
 
   cdef:
-    ints i,j,k,g
-    ints jb01 = jb0 + 1 - 2*LR
-    ints jb1 = jb01 - (1-LR) * width + LR
+    int i,j,k,g
+    int jb01 = jb0 + 1 - 2*LR
+    int jb1 = jb01 - (1-LR) * width + LR
 
   for k in range(Ntot[2]):
     for g in range(width):
@@ -244,12 +235,12 @@ cdef inline void prolong_y(real3d A, int LR,
         A[k,jb1+g,i] = A[k,jb01,i]
 
 cdef inline void prolong_z(real3d A, int LR,
-                       ints kb0, int width, ints Ntot[3]) nogil:
+                       int kb0, int width, int Ntot[3]) nogil:
 
   cdef:
-    ints i,j,k,g
-    ints kb01 = kb0 + 1 - 2*LR
-    ints kb1 = kb01 - (1-LR) * width + LR
+    int i,j,k,g
+    int kb01 = kb0 + 1 - 2*LR
+    int kb1 = kb01 - (1-LR) * width + LR
 
   for g in range(width):
     for j in range(Ntot[1]):
@@ -258,21 +249,21 @@ cdef inline void prolong_z(real3d A, int LR,
         A[kb1+g,j,i] = A[kb01,j,i]
 
 
-
-# =========================================================
+# ----------------------------------------------------------------
 
 cdef inline void copy_layer_r_sph(real3d A, int sgn,
-                       ints ib, ints ib0, int width,
-                       ints Ntot[3], ints Nact[3]) nogil:
+                       int ib, int ib0, int width,
+                       int Ntot[3], int Nact[3]) nogil:
 
   cdef:
-    ints j,k,j_,k_,g
-    ints ib1 = ib+width-1
-    ints Nph_pi = Nact[2]/2, Nth_pi = Nact[1]
-    ints ng = (Ntot[0]-Nact[0])/2
+    int j,k,j_,k_,g
+    int ib1 = ib+width-1
+    int Nph_pi = Nact[2]/2, Nth_pi = Nact[1]
+    int ng = (Ntot[0]-Nact[0])/2
 
   for k in range(Ntot[2]):
 
+    # CHECK THIS
     IF D3D: k_ = (k-ng + Nph_pi) % Nact[2] + ng
     ELSE:   k_ = k
 
@@ -284,41 +275,44 @@ cdef inline void copy_layer_r_sph(real3d A, int sgn,
       for g in range(width):
         A[k,j,ib1-g] = sgn * A[k_,j_,ib0+g]
 
-#---------------------------------------------------
+
+#-------------------------------------------------------
 
 cdef inline void copy_layer_r_cyl(real3d A, int sgn,
-                       ints ib, ints ib0, int width,
-                       ints Ntot[3], ints Nact[3]) nogil:
+                       int ib, int ib0, int width,
+                       int Ntot[3], int Nact[3]) nogil:
 
   cdef:
-    ints j,j_,k,g
-    ints ib1 = ib+width-1
-    ints Nph_pi = Nact[1]/2
-    ints ng = (Ntot[0]-Nact[0])/2
+    int j,j_,k,g
+    int ib1 = ib+width-1
+    int Nph_pi = Nact[1]/2
+    int ng = (Ntot[0]-Nact[0])/2
 
   for k in range(Ntot[2]):
     for j in range(Ntot[1]):
 
+      # CHECK THIS
       IF D2D: j_ = (j-ng + Nph_pi) % Nact[1] + ng
       ELSE:   j_ = j
 
       for g in range(width):
         A[k,j,ib1-g] = sgn * A[k,j_,ib0+g]
 
-#----------------------------------------------------
+#-------------------------------------------------------
 
 cdef inline void copy_layer_th_sph(real3d A, int sgn,
-                       ints jb, ints jb0, int width,
-                       ints Ntot[3], ints Nact[3]) nogil:
+                       int jb, int jb0, int width,
+                       int Ntot[3], int Nact[3]) nogil:
 
   cdef:
-    ints i,k,k_,g
-    ints jb1 = jb+width-1
-    ints Nph_pi = Nact[2]/2
-    ints ng = (Ntot[0]-Nact[0])/2
+    int i,k,k_,g
+    int jb1 = jb+width-1
+    int Nph_pi = Nact[2]/2
+    int ng = (Ntot[0]-Nact[0])/2
 
   for k in range(Ntot[2]):
 
+    # CHECK THIS
     IF D3D: k_ = (k-ng + Nph_pi) % Nact[2] + ng
     ELSE:   k_ = k
 
@@ -326,20 +320,21 @@ cdef inline void copy_layer_th_sph(real3d A, int sgn,
       for g in range(width):
         A[k,jb1-g,i] = sgn * A[k_, jb0+g, i]
 
-# ---------------------------------------------------
+# ------------------------------------------------------
 
 cdef inline void copy_add_layer_r_sph(real3d A, int sgn,
-                       ints ib, ints ib0, int width,
-                       ints Ntot[3], ints Nact[3]) nogil:
+                       int ib, int ib0, int width,
+                       int Ntot[3], int Nact[3]) nogil:
 
   cdef:
-    ints j,k,j_,k_,g
-    ints ib1 = ib+width-1
-    ints Nph_pi = Nact[2]/2, Nth_pi = Nact[1]
-    ints ng = (Ntot[0]-Nact[0])/2
+    int j,k,j_,k_,g
+    int ib1 = ib+width-1
+    int Nph_pi = Nact[2]/2, Nth_pi = Nact[1]
+    int ng = (Ntot[0]-Nact[0])/2
 
   for k in range(Ntot[2]):
 
+    # CHECK THIS
     IF D3D: k_ = (k-ng + Nph_pi) % Nact[2] + ng
     ELSE:   k_ = k
 
@@ -351,41 +346,43 @@ cdef inline void copy_add_layer_r_sph(real3d A, int sgn,
       for g in range(width):
         A[k,j,ib1-g] += sgn * A[k_,j_,ib0+g]
 
-#---------------------------------------------------
+#--------------------------------------------------------
 
 cdef inline void copy_add_layer_r_cyl(real3d A, int sgn,
-                       ints ib, ints ib0, int width,
-                       ints Ntot[3], ints Nact[3]) nogil:
+                       int ib, int ib0, int width,
+                       int Ntot[3], int Nact[3]) nogil:
 
   cdef:
-    ints j,j_,k,g
-    ints ib1 = ib+width-1
-    ints Nph_pi = Nact[1]/2
-    ints ng = (Ntot[0]-Nact[0])/2
+    int j,j_,k,g
+    int ib1 = ib+width-1
+    int Nph_pi = Nact[1]/2
+    int ng = (Ntot[0]-Nact[0])/2
 
   for k in range(Ntot[2]):
     for j in range(Ntot[1]):
 
+      # CHECK THIS
       IF D2D: j_ = (j-ng + Nph_pi) % Nact[1] + ng
       ELSE:   j_ = j
 
       for g in range(width):
         A[k,j,ib1-g] += sgn * A[k,j_,ib0+g]
 
-#----------------------------------------------------
+#---------------------------------------------------------
 
 cdef inline void copy_add_layer_th_sph(real3d A, int sgn,
-                       ints jb, ints jb0, int width,
-                       ints Ntot[3], ints Nact[3]) nogil:
+                       int jb, int jb0, int width,
+                       int Ntot[3], int Nact[3]) nogil:
 
   cdef:
-    ints i,k,k_,g
-    ints jb1 = jb+width-1
-    ints Nph_pi = Nact[2]/2
-    ints ng = (Ntot[0]-Nact[0])/2
+    int i,k,k_,g
+    int jb1 = jb+width-1
+    int Nph_pi = Nact[2]/2
+    int ng = (Ntot[0]-Nact[0])/2
 
   for k in range(Ntot[2]):
 
+    # CHECK THIS
     IF D3D: k_ = (k-ng + Nph_pi) % Nact[2] + ng
     ELSE:   k_ = k
 
@@ -399,13 +396,13 @@ cdef inline void copy_add_layer_th_sph(real3d A, int sgn,
 
 IF MPI:
 
-  cdef inline void pack(real3d A, real1d sendbuf, ints *offset, ints *lims,
-                        int *pack_order, int sign):
+  cdef inline void pack(real3d A, real1d sendbuf, long *offset, int *lims,
+                        int *pack_order, int sign) nogil:
 
     cdef:
-      ints i,j,k
-      ints i1,i2, j1,j2, k1,k2
-      ints di,dj,dk
+      int i,j,k
+      int i1,i2, j1,j2, k1,k2
+      int di,dj,dk
 
     if pack_order[0]==1:
       i1,i2 = lim[0],lim[1]+1
@@ -428,17 +425,17 @@ IF MPI:
       k1,k2 = lim[5],lim[4]-1
       dk=-1
 
-    for k in range(k1,k2):
-      for j in range(j1,j2):
-        for i in range(i1,i2):
+    for k in range(k1,k2,dk):
+      for j in range(j1,j2,dj):
+        for i in range(i1,i2,di):
 
           sendbuf[offset[0]] = sign*A[k,j,i]
           offset[0] = offset[0]+1
 
 
-  cdef inline void unpack(real3d A, real1d recvbuf, ints *offset, ints *lims):
+  cdef inline void unpack(real3d A, real1d recvbuf, long *offset, int *lims) nogil:
 
-    cdef ints i,j,k
+    cdef int i,j,k
 
     for k in range(lims[4],lims[5]+1):
       for j in range(lims[2],lims[3]+1):
@@ -448,9 +445,9 @@ IF MPI:
           offset[0] = offset[0]+1
 
 
-  cdef inline void unpack_add(real3d A, real1d recvbuf, ints *offset, ints *lims):
+  cdef inline void unpack_add(real3d A, real1d recvbuf, long *offset, int *lims) nogil:
 
-    cdef ints i,j,k
+    cdef int i,j,k
 
     for k in range(lims[4],lims[5]+1):
       for j in range(lims[2],lims[3]+1):

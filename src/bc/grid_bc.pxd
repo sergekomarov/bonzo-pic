@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 
-from bnz.defs_cy cimport *
-from bnz.coord.grid cimport GridCoord,GridData
-from bnz.pic.integrate cimport BnzIntegr
+from defs cimport *
+from grid cimport GridCoord,GridData
+from integrator cimport BnzIntegr
 
 # grid BC function pointer
 ctypedef void (*GridBcFunc)(GridData,GridCoord*, BnzIntegr, int1d)

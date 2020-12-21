@@ -6,13 +6,12 @@ IF MPI:
 
 import numpy as np
 cimport numpy as np
-
 import sys
 
-from bnz.utils cimport print_root
-from bnz.io.read_config import read_param
-from bnz.problem.problem cimport set_grid_bc_user
-from grid_bc_funcs_pic cimport *
+from util cimport print_root
+from problem cimport set_grid_bc_user
+from grid_bc_funcs cimport *
+from read_config import read_param
 
 IF SPREC:
   np_real = np.float32
@@ -27,7 +26,7 @@ IF MPI:
 
 cdef class GridBc:
 
-  def __cinit__(self, GridCoord gc, bytes usr_dir):
+  def __cinit__(self, GridCoord gc, str usr_dir):
 
     cdef int i,k
 
@@ -43,7 +42,6 @@ cdef class GridBc:
     self.bc_flags[1][1] = read_param("physics", "bc_y2", 'i',usr_dir)
     self.bc_flags[2][0] = read_param("physics", "bc_z1", 'i',usr_dir)
     self.bc_flags[2][1] = read_param("physics", "bc_z2", 'i',usr_dir)
-
 
     # Set BC function pointers.
 
@@ -239,47 +237,47 @@ cdef class GridBc:
         recv_req1 = comm.Irecv([recvbuf[0,:], cnt1, mpi_real], nbr_ranks[0][0], tag=rtagl)
         recv_req2 = comm.Irecv([recvbuf[1,:], cnt2, mpi_real], nbr_ranks[0][1], tag=rtagr)
 
-        pack_grid_all(grid, bvars, sendbuf[0,:], XAX, 0)
+        pack_grid_all(gd,gc, bvars, sendbuf[0,:], XAX, 0)
         send_req1 = comm.Isend([sendbuf[0,:], cnt2, mpi_real], nbr_ranks[0][0], tag=stagl)
 
-        pack_grid_all(grid, bvars, sendbuf[1,:], XAX, 1)
+        pack_grid_all(gd,gc, bvars, sendbuf[1,:], XAX, 1)
         send_req2 = comm.Isend([sendbuf[1,:], cnt1, mpi_real], nbr_ranks[0][1], tag=stagr)
 
         mpi.Request.Waitall([send_req1,send_req2])
 
         done = mpi.Request.Waitany([recv_req1,recv_req2])
-        if done==0:   unpack_grid_all(grid, bvars, recvbuf[0,:], XAX,0)
-        elif done==1: unpack_grid_all(grid, bvars, recvbuf[1,:], XAX,1)
+        if done==0:   unpack_grid_all(gd,gc, bvars, recvbuf[0,:], XAX,0)
+        elif done==1: unpack_grid_all(gd,gc, bvars, recvbuf[1,:], XAX,1)
 
         done = mpi.Request.Waitany([recv_req1,recv_req2])
-        if done==0:   unpack_grid_all(grid, bvars, recvbuf[0,:], XAX,0)
-        elif done==1: unpack_grid_all(grid, bvars, recvbuf[1,:], XAX,1)
+        if done==0:   unpack_grid_all(gd,gc, bvars, recvbuf[0,:], XAX,0)
+        elif done==1: unpack_grid_all(gd,gc, bvars, recvbuf[1,:], XAX,1)
 
       elif nbr_ranks[0][0] == -1 and nbr_ranks[0][1] > -1:
 
         recv_req2 = comm.Irecv([recvbuf[1,:], cnt2, mpi_real], nbr_ranks[0][1], tag=rtagr)
 
-        pack_grid_all(grid, bvars, sendbuf[1,:], XAX, 1)
+        pack_grid_all(gd,gc, bvars, sendbuf[1,:], XAX, 1)
         send_req2 = comm.Isend([sendbuf[1,:], cnt1, mpi_real], nbr_ranks[0][1], tag=stagr)
 
         self.grid_bc_funcs[0][0](sim, bvars)
 
         send_req2.Wait()
         recv_req2.Wait()
-        unpack_grid_all(grid, bvars, recvbuf[1,:], XAX,1)
+        unpack_grid_all(gd,gc, bvars, recvbuf[1,:], XAX,1)
 
       elif nbr_ranks[0][0] > -1 and nbr_ranks[0][1] == -1:
 
         recv_req1 = comm.Irecv([recvbuf[0,:], cnt1, mpi_real], nbr_ranks[0][0], tag=rtagl)
 
-        pack_grid_all(grid, bvars, sendbuf[0,:], XAX, 0)
+        pack_grid_all(gd,gc, bvars, sendbuf[0,:], XAX, 0)
         send_req1 = comm.Isend([sendbuf[0,:], cnt2, mpi_real], nbr_ranks[0][0], tag=stagl)
 
         self.grid_bc_funcs[0][1](sim, bvars)
 
         send_req1.Wait()
         recv_req1.Wait()
-        unpack_grid_all(grid, bvars, recvbuf[0,:], XAX,0)
+        unpack_grid_all(gd,gc, bvars, recvbuf[0,:], XAX,0)
 
       else:
 
@@ -299,47 +297,47 @@ cdef class GridBc:
           recv_req1 = comm.Irecv([recvbuf[0,:], cnt1, mpi_real], nbr_ranks[1][0], tag=rtagl)
           recv_req2 = comm.Irecv([recvbuf[1,:], cnt2, mpi_real], nbr_ranks[1][1], tag=rtagr)
 
-          pack_grid_all(grid, bvars, sendbuf[0,:], YAX, 0)
+          pack_grid_all(gd,gc, bvars, sendbuf[0,:], YAX, 0)
           send_req1 = comm.Isend([sendbuf[0,:], cnt2, mpi_real], nbr_ranks[1][0], tag=stagl)
 
-          pack_grid_all(grid, bvars, sendbuf[1,:], YAX, 1)
+          pack_grid_all(gd,gc, bvars, sendbuf[1,:], YAX, 1)
           send_req2 = comm.Isend([sendbuf[1,:], cnt1, mpi_real], nbr_ranks[1][1], tag=stagr)
 
           mpi.Request.Waitall([send_req1,send_req2])
 
           done = mpi.Request.Waitany([recv_req1,recv_req2])
-          if done==0:   unpack_grid_all(grid, bvars, recvbuf[0,:], YAX,0)
-          elif done==1: unpack_grid_all(grid, bvars, recvbuf[1,:], YAX,1)
+          if done==0:   unpack_grid_all(gd,gc, bvars, recvbuf[0,:], YAX,0)
+          elif done==1: unpack_grid_all(gd,gc, bvars, recvbuf[1,:], YAX,1)
 
           done = mpi.Request.Waitany([recv_req1,recv_req2])
-          if done==0:   unpack_grid_all(grid, bvars, recvbuf[0,:], YAX,0)
-          elif done==1: unpack_grid_all(grid, bvars, recvbuf[1,:], YAX,1)
+          if done==0:   unpack_grid_all(gd,gc, bvars, recvbuf[0,:], YAX,0)
+          elif done==1: unpack_grid_all(gd,gc, bvars, recvbuf[1,:], YAX,1)
 
         elif nbr_ranks[1][0] == -1 and nbr_ranks[1][1] > -1:
 
           recv_req2 = comm.Irecv([recvbuf[1,:], cnt2, mpi_real], nbr_ranks[1][1], tag=rtagr)
 
-          pack_grid_all(grid, bvars, sendbuf[1,:], YAX, 1)
+          pack_grid_all(gd,gc, bvars, sendbuf[1,:], YAX, 1)
           send_req2 = comm.Isend([sendbuf[1,:], cnt1, mpi_real], nbr_ranks[1][1], tag=stagr)
 
           self.grid_bc_funcs[1][0](sim, bvars)
 
           send_req2.Wait()
           recv_req2.Wait()
-          unpack_grid_all(grid, bvars, recvbuf[1,:], YAX,1)
+          unpack_grid_all(gd,gc, bvars, recvbuf[1,:], YAX,1)
 
         elif nbr_ranks[1][0] > -1 and nbr_ranks[1][1] == -1:
 
           recv_req1 = comm.Irecv([recvbuf[0,:], cnt1, mpi_real], nbr_ranks[1][0], tag=rtagl)
 
-          pack_grid_all(grid, bvars, sendbuf[0,:], YAX, 0)
+          pack_grid_all(gd,gc, bvars, sendbuf[0,:], YAX, 0)
           send_req1 = comm.Isend([sendbuf[0,:], cnt2, mpi_real], nbr_ranks[1][0], tag=stagl)
 
           self.grid_bc_funcs[1][1](sim, bvars)
 
           send_req1.Wait()
           recv_req1.Wait()
-          unpack_grid_all(grid, bvars, recvbuf[0,:], YAX,0)
+          unpack_grid_all(gd,gc, bvars, recvbuf[0,:], YAX,0)
 
         else:
 
@@ -358,46 +356,46 @@ cdef class GridBc:
           recv_req1 = comm.Irecv([recvbuf[0,:], cnt1, mpi_real], nbr_ranks[2][0], tag=rtagl)
           recv_req2 = comm.Irecv([recvbuf[1,:], cnt2, mpi_real], nbr_ranks[2][1], tag=rtagr)
 
-          pack_grid_all(grid, bvars, sendbuf[0,:], ZAX, 0)
+          pack_grid_all(gd,gc, bvars, sendbuf[0,:], ZAX, 0)
           send_req1 = comm.Isend([sendbuf[0,:], cnt2, mpi_real], nbr_ranks[2][0], tag=stagl)
-          pack_grid_all(grid, bvars, sendbuf[1,:], ZAX, 1)
+          pack_grid_all(gd,gc, bvars, sendbuf[1,:], ZAX, 1)
           send_req2 = comm.Isend([sendbuf[1,:], cnt1, mpi_real], nbr_ranks[2][1], tag=stagr)
 
           mpi.Request.Waitall([send_req1,send_req2])
 
           done = mpi.Request.Waitany([recv_req1,recv_req2])
-          if done==0:   unpack_grid_all(grid, bvars, recvbuf[0,:], ZAX,0)
-          elif done==1: unpack_grid_all(grid, bvars, recvbuf[1,:], ZAX,1)
+          if done==0:   unpack_grid_all(gd,gc, bvars, recvbuf[0,:], ZAX,0)
+          elif done==1: unpack_grid_all(gd,gc, bvars, recvbuf[1,:], ZAX,1)
 
           done = mpi.Request.Waitany([recv_req1,recv_req2])
-          if done==0:   unpack_grid_all(grid, bvars, recvbuf[0,:], ZAX,0)
-          elif done==1: unpack_grid_all(grid, bvars, recvbuf[1,:], ZAX,1)
+          if done==0:   unpack_grid_all(gd,gc, bvars, recvbuf[0,:], ZAX,0)
+          elif done==1: unpack_grid_all(gd,gc, bvars, recvbuf[1,:], ZAX,1)
 
         elif nbr_ranks[2][0] == -1 and nbr_ranks[2][1] > -1:
 
           recv_req2 = comm.Irecv([recvbuf[1,:], cnt2, mpi_real], nbr_ranks[2][1], tag=rtagr)
 
-          pack_grid_all(grid, bvars, sendbuf[1,:], ZAX, 1)
+          pack_grid_all(gd,gc, bvars, sendbuf[1,:], ZAX, 1)
           send_req2 = comm.Isend([sendbuf[1,:], cnt1, mpi_real], nbr_ranks[2][1], tag=stagr)
 
           self.grid_bc_funcs[2][0](sim, bvars)
 
           send_req2.Wait()
           recv_req2.Wait()
-          unpack_grid_all(grid, bvars, recvbuf[1,:], ZAX,1)
+          unpack_grid_all(gd,gc, bvars, recvbuf[1,:], ZAX,1)
 
         elif nbr_ranks[2][0] > -1 and nbr_ranks[2][1] == -1:
 
-          recv_req1 = comm.Irecv([grecvbuf[0,:], cnt1, mpi_real], nbr_ranks[2][0], tag=rtagl)
+          recv_req1 = comm.Irecv([recvbuf[0,:], cnt1, mpi_real], nbr_ranks[2][0], tag=rtagl)
 
-          pack_grid_all(grid, bvars, sendbuf[0,:], ZAX, 0)
+          pack_grid_all(gd,gc, bvars, sendbuf[0,:], ZAX, 0)
           send_req1 = comm.Isend([sendbuf[0,:], cnt2, mpi_real], nbr_ranks[2][0], tag=stagl)
 
           self.grid_bc_funcs[2][1](sim, bvars)
 
           send_req1.Wait()
           recv_req1.Wait()
-          unpack_grid_all(grid, bvars, recvbuf[0,:], ZAX,0)
+          unpack_grid_all(gd,gc, bvars, recvbuf[0,:], ZAX,0)
 
         else:
 

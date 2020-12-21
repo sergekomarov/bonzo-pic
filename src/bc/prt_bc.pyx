@@ -7,9 +7,9 @@ IF MPI:
 import numpy as np
 cimport numpy as np
 
-from bnz.utils cimport print_root
-from bnz.io.read_config import read_param
-from bnz.problem.problem cimport set_prt_bc_user
+from util cimport print_root
+from read_config import read_param
+from problem cimport set_prt_bc_user
 from prt_bc_funcs cimport *
 
 IF SPREC:
@@ -26,7 +26,7 @@ IF MPI:
 
 cdef class PrtBc:
 
-  def __cinit__(self, ParticleProp *pp, GridCoord *gc, bytes usr_dir):
+  def __cinit__(self, ParticleProp *pp, GridCoord gc, str usr_dir):
 
     cdef int i,k
 
@@ -138,23 +138,12 @@ cdef class PrtBc:
         long bufsize
         long Nxyz =  IMAX(IMAX(gc.Nact[0],gc.Nact[1]), gc.Nact[2])
 
-      IF not PIC:
-
-        IF D2D and D3D:
-          bufsize = 5*pp.Nprop * pp.ppc * Nxyz**2
-        ELIF D2D:
-          bufsize = 5*pp.Nprop * pp.ppc * Nxyz
-        ELSE:
-          bufsize = 5*pp.Nprop * pp.ppc
-
+      IF D2D and D3D:
+        bufsize = 5*pp.Nprop * pp.ppc * Nxyz**2
+      ELIF D2D:
+        bufsize = 5*pp.Nprop * pp.ppc * Nxyz
       ELSE:
-
-        IF D2D and D3D:
-          bufsize = 5*pp.Nprop * pp.ppc * Nxyz**2
-        ELIF D2D:
-          bufsize = 5*pp.Nprop * pp.ppc * Nxyz
-        ELSE:
-          bufsize = 5*pp.Nprop * pp.ppc
+        bufsize = 5*pp.Nprop * pp.ppc
 
       self.sendbuf = np.zeros((2,bufsize), dtype=np_real)
       self.recvbuf = np.zeros((2,bufsize), dtype=np_real)
@@ -175,7 +164,7 @@ cdef class PrtBc:
   # --------------------------------------------------------------------
 
   cdef void apply_prt_bc(self, PrtData *pd, PrtProp *pp,
-                         GridData gd, GridCoord *gc, BnzIntegr integr):
+                         GridData gd, GridCoord gc, BnzIntegr integr):
 
     IF MPI:
 
@@ -187,6 +176,22 @@ cdef class PrtBc:
         long[::1] cnt_send=np.zeros(1,np.int_)
         long[::1] cnt_recv=np.zeros(1,np.int_)
 
+        real xmin,xmax, ymin,ymax, zmin,zmax
+        real lenx,leny,lenz
+
+      xmin=gc.lf[0][gc.i1]
+      xmax=gc.lf[0][gc.i2+1]
+
+      ymin=gc.lf[1][gc.j1]
+      ymax=gc.lf[1][gc.j2+1]
+
+      zmin=gc.lf[2][gc.k1]
+      zmax=gc.lf[2][gc.k2+1]
+
+      lenx = gc.lmax[0]-gc.lmin[0]
+      leny = gc.lmax[1]-gc.lmin[1]
+      lenz = gc.lmax[2]-gc.lmin[2]
+
       # ------- data exchchange in x-direction --------------
 
       if gc.nbr_ranks[0][0] > -1 and gc.nbr_ranks[0][1] > -1:
@@ -195,7 +200,7 @@ cdef class PrtBc:
 
         recv_req = comm.Irecv([cnt_recv, 1, mpi.LONG], gc.nbr_ranks[0][0], tag=1)
 
-        cnt_send[0] = x2_pack_shift_prt(pd,pp, self.sendbuf, &self.sendbuf_size, gc.lmin[0],gc.lmax[0])
+        cnt_send[0] = x2_pack_shift_prt(pd,pp, self.sendbuf, &self.sendbuf_size, xmin,xmax)
         if cnt_send[0] > 0:
           comm.Send([cnt_send, 1, mpi.LONG], gc.nbr_ranks[0][1], tag=1)
 
@@ -211,13 +216,13 @@ cdef class PrtBc:
 
         if cnt_recv[0] > 0:
           recv_req.Wait()
-          unpack_prt(pd,pp, self.recvbuf, cnt_recv[0])
+          unpack_shift_prt(pd,pp, self.recvbuf, cnt_recv[0], lenx,leny,lenz)
 
         # receive from right, send to left
 
         recv_req = comm.Irecv([cnt_recv, 1, mpi.LONG], gc.nbr_ranks[0][1], tag=0)
 
-        cnt_send[0] = x1_pack_shift_prt(pd,pp, self.sendbuf, &self.sendbuf_size, gc.lmin[0],gc.lmax[0])
+        cnt_send[0] = x1_pack_shift_prt(pd,pp, self.sendbuf, &self.sendbuf_size, xmin,xmax)
         if cnt_send[0] > 0:
           comm.Send([cnt_send, 1, mpi.LONG], gc.nbr_ranks[0][0], tag=0)
 
@@ -233,7 +238,7 @@ cdef class PrtBc:
 
         if cnt_recv[0] > 0:
           recv_req.Wait()
-          unpack_prt(pd,pp, self.recvbuf, cnt_recv[0])
+          unpack_shift_prt(pd,pp, self.recvbuf, cnt_recv[0], lenx,leny,lenz)
 
       #--------------------------------------------
 
@@ -241,7 +246,7 @@ cdef class PrtBc:
 
         # send to right
 
-        cnt_send[0] = pack_shift_prt_x2(pd,pp, self.sendbuf, &self.sendbuf_size, gc.lmin[0],gc.lmax[0])
+        cnt_send[0] = pack_shift_prt_x2(pd,pp, self.sendbuf, &self.sendbuf_size, xmin,xmax)
 
         if cnt_send[0] > 0:
           comm.Send([cnt_send, 1, mpi.LONG], gc.nbr_ranks[0][1], tag=1)
@@ -260,7 +265,7 @@ cdef class PrtBc:
         if cnt_recv[0] > 0:
           recv_req = comm.Irecv([self.recvbuf[0,:], cnt_recv[0], mpi_real], gc.nbr_ranks[0][1], tag=0)
           recv_req.Wait()
-          unpack_prt(pd,pp, self.recvbuf, cnt_recv[0])
+          unpack_shift_prt(pd,pp, self.recvbuf, cnt_recv[0], lenx,leny,lenz)
 
       #----------------------------------------------
 
@@ -277,13 +282,13 @@ cdef class PrtBc:
         if cnt_recv[0] > 0:
           recv_req = comm.Irecv([self.recvbuf[0,:], cnt_recv[0], mpi_real], gc.nbr_ranks[0][0], tag=1)
           recv_req.Wait()
-          unpack_prt(pd,pp, self.recvbuf, cnt_recv[0])
+          unpack_shift_prt(pd,pp, self.recvbuf, cnt_recv[0], lenx,leny,lenz)
 
         self.prt_bc_funcs[0][1](pd,pp, gd,gc, integr)
 
         # send to left
 
-        cnt_send[0] = pack_shift_prt_x1(pd,pp, self.sendbuf, &self.sendbuf_size, gc.lmin[0],gc.lmax[0])
+        cnt_send[0] = pack_shift_prt_x1(pd,pp, self.sendbuf, &self.sendbuf_size, xmin,xmax)
 
         if cnt_send[0] > 0:
           comm.Send([cnt_send, 1, mpi.LONG], gc.nbr_ranks[0][0], tag=0)
@@ -305,7 +310,7 @@ cdef class PrtBc:
 
           recv_req = comm.Irecv([cnt_recv, 1, mpi.LONG], gc.nbr_ranks[1][0], tag=1)
 
-          cnt_send[0] = pack_shift_prt_y2(pd,pp, self.sendbuf, &self.sendbuf_size, gc.lmin[1],gc.lmax[1])
+          cnt_send[0] = pack_shift_prt_y2(pd,pp, self.sendbuf, &self.sendbuf_size, ymin,ymax)
           if cnt_send[0] > 0:
             comm.Send([cnt_send, 1, mpi.LONG], gc.nbr_ranks[1][1], tag=1)
 
@@ -321,13 +326,13 @@ cdef class PrtBc:
 
           if cnt_recv[0] > 0:
             recv_req.Wait()
-            unpack_prt(pd,pp, self.recvbuf, cnt_recv[0])
+            unpack_shift_prt(pd,pp, self.recvbuf, cnt_recv[0], lenx,leny,lenz)
 
           # receive from right, send to left
 
           recv_req = comm.Irecv([cnt_recv, 1, mpi.LONG], gc.nbr_ranks[1][1], tag=0)
 
-          cnt_send[0] = pack_shift_prt_y1(pd,pp, self.sendbuf, &self.sendbuf_size, gc.lmin[1],gc.lmax[1])
+          cnt_send[0] = pack_shift_prt_y1(pd,pp, self.sendbuf, &self.sendbuf_size, ymin,ymax)
           if cnt_send[0] > 0:
             comm.Send([cnt_send, 1, mpi.LONG], gc.nbr_ranks[1][0], tag=0)
 
@@ -343,7 +348,7 @@ cdef class PrtBc:
 
           if cnt_recv[0] > 0:
             recv_req.Wait()
-            unpack_prt(pd,pp, self.recvbuf, cnt_recv[0])
+            unpack_shift_prt(pd,pp, self.recvbuf, cnt_recv[0], lenx,leny,lenz)
 
         #--------------------------------------------
 
@@ -351,7 +356,7 @@ cdef class PrtBc:
 
           # send to right
 
-          cnt_send[0] = pack_shift_prt_y2(pd,pp, self.sendbuf, &self.sendbuf_size, gc.lmin[1],gc.lmax[1])
+          cnt_send[0] = pack_shift_prt_y2(pd,pp, self.sendbuf, &self.sendbuf_size, ymin,ymax)
 
           if cnt_send[0] > 0:
             comm.Send([cnt_send, 1, mpi.LONG], gc.nbr_ranks[1][1], tag=1)
@@ -370,7 +375,7 @@ cdef class PrtBc:
           if cnt_recv[0] > 0:
             recv_req = comm.Irecv([self.recvbuf[0,:], cnt_recv[0], mpi_real], gc.nbr_ranks[1][1], tag=0)
             recv_req.Wait()
-            unpack_prt(pd,pp, self.recvbuf, cnt_recv[0])
+            unpack_shift_prt(pd,pp, self.recvbuf, cnt_recv[0], lenx,leny,lenz)
 
         #----------------------------------------------
 
@@ -387,13 +392,13 @@ cdef class PrtBc:
           if cnt_recv[0] > 0:
             recv_req = comm.Irecv([self.recvbuf[0,:], cnt_recv[0], mpi_real], gc.nbr_ranks[1][0], tag=1)
             recv_req.Wait()
-            unpack_prt(pd,pp, self.recvbuf, cnt_recv[0])
+            unpack_shift_prt(pd,pp, self.recvbuf, cnt_recv[0], lenx,leny,lenz)
 
           self.prt_bc_funcs[1][1](pd,pp, gd,gc, integr)
 
           # send to left
 
-          cnt_send[0] = pack_shift_prt_y1(pd,pp, self.sendbuf, &self.sendbuf_size, gc.lmin[1],gc.lmax[1])
+          cnt_send[0] = pack_shift_prt_y1(pd,pp, self.sendbuf, &self.sendbuf_size, ymin,ymax)
 
           if cnt_send[0] > 0:
             comm.Send([cnt_send, 1, mpi.LONG], gc.nbr_ranks[1][0], tag=0)
@@ -415,7 +420,7 @@ cdef class PrtBc:
 
           recv_req = comm.Irecv([cnt_recv, 1, mpi.LONG], gc.nbr_ranks[2][0], tag=1)
 
-          cnt_send[0] = pack_shift_prt_z2(pd,pp, self.sendbuf, &self.sendbuf_size, gc.lmin[2],gc.lmax[2])
+          cnt_send[0] = pack_shift_prt_z2(pd,pp, self.sendbuf, &self.sendbuf_size, zmin,zmax)
           if cnt_send[0] > 0:
             comm.Send([cnt_send, 1, mpi.LONG], gc.nbr_ranks[2][1], tag=1)
 
@@ -431,13 +436,13 @@ cdef class PrtBc:
 
           if cnt_recv[0] > 0:
             recv_req.Wait()
-            unpack_prt(pd,pp, self.recvbuf, cnt_recv[0])
+            unpack_shift_prt(pd,pp, self.recvbuf, cnt_recv[0], lenx,leny,lenz)
 
           # receive from right, send to left
 
           recv_req = comm.Irecv([cnt_recv, 1, mpi.LONG], gc.nbr_ranks[2][1], tag=0)
 
-          cnt_send[0] = pack_shift_prt_z1(pd,pp, self.sendbuf, &self.sendbuf_size, gc.lmin[2],gc.lmax[2])
+          cnt_send[0] = pack_shift_prt_z1(pd,pp, self.sendbuf, &self.sendbuf_size, zmin,zmax)
           if cnt_send[0] > 0:
             comm.Send([cnt_send, 1, mpi.LONG], gc.nbr_ranks[2][0], tag=0)
 
@@ -453,7 +458,7 @@ cdef class PrtBc:
 
           if recv_req[0] > 0:
             recv_req.Wait()
-            unpack_prt(pd,pp, self.recvbuf, cnt_recv[0])
+            unpack_shift_prt(pd,pp, self.recvbuf, cnt_recv[0], lenx,leny,lenz)
 
         #--------------------------------------------
 
@@ -461,7 +466,7 @@ cdef class PrtBc:
 
           # send to right
 
-          cnt_send[0] = pack_shift_prt_z2(pd,pp, self.sendbuf, &self.sendbuf_size, gc.lmin[2],gc.lmax[2])
+          cnt_send[0] = pack_shift_prt_z2(pd,pp, self.sendbuf, &self.sendbuf_size, zmin,zmax)
 
           if cnt_send[0] > 0:
             comm.Send([cnt_send, 1, mpi.LONG], gc.nbr_ranks[2][1], tag=1)
@@ -480,7 +485,7 @@ cdef class PrtBc:
           if cnt_recv[0] > 0:
             recv_req = comm.Irecv([self.recvbuf[0,:], cnt_recv[0], mpi_real], gc.nbr_ranks[2][1], tag=0)
             recv_req.Wait()
-            unpack_prt(pd,pp, self.recvbuf, cnt_recv[0])
+            unpack_shift_prt(pd,pp, self.recvbuf, cnt_recv[0], lenx,leny,lenz)
 
         #----------------------------------------------
 
@@ -497,13 +502,13 @@ cdef class PrtBc:
           if cnt_recv[0] > 0:
             recv_req = comm.Irecv([self.recvbuf[0,:], cnt_recv[0], mpi_real], gc.nbr_ranks[2][0], tag=1)
             recv_req.Wait()
-            unpack_prt(pd,pp, self.recvbuf, cnt_recv[0])
+            unpack_shift_prt(pd,pp, self.recvbuf, cnt_recv[0], lenx,leny,lenz)
 
           self.prt_bc_funcs[2][1](pd,pp, gd,gc, integr)
 
           # send to left
 
-          cnt_send[0] = pack_shift_prt_z1(pd,pp, self.sendbuf, &self.sendbuf_size, gc.lmin[2],gc.lmax[2])
+          cnt_send[0] = pack_shift_prt_z1(pd,pp, self.sendbuf, &self.sendbuf_size, zmin,zmax)
 
           if cnt_send[0] > 0:
             comm.Send([cnt_send, 1, mpi.LONG], gc.nbr_ranks[2][0], tag=0)

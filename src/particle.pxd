@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 
-from bnz.defs_cy cimport *
-from bnz.coord.coord_cy cimport GridCoord
+from defs cimport *
+from grid cimport GridCoord
 
-cdef extern from "particle.h" nogil:
+cdef extern from "particle_c.h" nogil:
 
   # Properties of a particle specie.
 
@@ -48,7 +48,8 @@ cdef extern from "particle.h" nogil:
     long *id    # particle ID
 
 
-from bnz.particle.prt_bc cimport PrtBc
+# from bnz.particle.prt_bc cimport PrtBc
+cdef class PrtBc
 
 # Particle class.
 
@@ -59,4 +60,4 @@ cdef class BnzParticles:
     PrtData *data
     PrtBc bc
 
-  cdef bytes usr_dir
+  cdef str usr_dir

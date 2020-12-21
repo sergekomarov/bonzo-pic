@@ -1,4 +1,7 @@
-#include "../defs.h"
+#ifndef PARTICLE_H
+#define PARTICLE_H
+
+#include "../defs_c.h"
 
 // Properties of a particle specie.
 
@@ -47,3 +50,5 @@ typedef struct {
   long *id;   // particle ID
 
 } PrtData;
+
+#endif

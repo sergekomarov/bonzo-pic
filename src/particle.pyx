@@ -4,7 +4,7 @@ import numpy as np
 cimport numpy as np
 
 from libc.stdlib cimport free, calloc
-from bnz.io.read_config import read_param
+from read_config import read_param
 
 IF SPREC:
   np_real = np.float32
@@ -14,7 +14,7 @@ ELSE:
 
 cdef class BnzParticles:
 
-  def __cinit__(self, GridCoord gc, bytes usr_dir):
+  def __cinit__(self, GridCoord gc, str usr_dir):
 
     # Set particle properties.
 

@@ -10,8 +10,6 @@ ELSE:
   np_real = np.float64
 
 
-# ===========================================================================
-
 # Periodic BCs for particles.
 
 cdef void x1_prt_bc_periodic(PrtData *pd, PrtProp *pp,
@@ -79,8 +77,7 @@ cdef void z2_prt_bc_periodic(PrtData *pd, PrtProp *pp,
       pd.z[n] = pd.z[n] - dz
 
 
-
-# =====================================================================
+# --------------------------------------------------------------------------
 
 # Outflow BCs for particles.
 # Remove particles as they recede 1 ghost cell away from active domain.
@@ -151,7 +148,7 @@ cdef void z2_prt_bc_outflow(PrtData *pd, PrtProp *pp,
       n = n-1
 
 
-# =================================================================
+# --------------------------------------------------------------------------
 
 # Reflective BCs for particles.
 
@@ -221,8 +218,7 @@ cdef void z2_prt_bc_reflect(PrtData *pd, PrtProp *pp,
       pd.w[n] = -pd.w[n]
 
 
-
-# ====================================================================
+# --------------------------------------------------------------------------
 
 cdef void delete_particle(PrtData *pd, PrtProp *pp, long n):
 
@@ -243,7 +239,7 @@ cdef void delete_particle(PrtData *pd, PrtProp *pp, long n):
   pd.id[n] = pd.id[Np-1]
 
 
-# -----------------------------------------------------------------------
+# =========================================================================
 
 IF MPI:
 
@@ -259,12 +255,10 @@ IF MPI:
 
 
 
-  cdef long x1_pack_shift_prt(PrtData *pd, PrtProp *pp, real2d sendbuf,
-                              long *sendbuf_size, real xmin, real xmax):
+  cdef long x1_pack_prt(PrtData *pd, PrtProp *pp, real2d sendbuf,
+                        long *sendbuf_size, real xmin, real xmax):
 
-    cdef:
-      long n,i
-      real dx = xmax-xmin
+    cdef long n,i
 
     i=0
 
@@ -272,7 +266,7 @@ IF MPI:
 
       if pd.x[n] < xmin:
 
-        sendbuf[0,i] = pd.x[n] + dx
+        sendbuf[0,i] = pd.x[n]
         i=i+1
         sendbuf[0,i] = pd.y[n]
         i=i+1
@@ -305,21 +299,17 @@ IF MPI:
     return i
 
 
+  cdef long x2_pack_prt(PrtData *pd, PrtProp *pp, real2d sendbuf,
+                        long *sendbuf_size, real xmin, real xmax):
 
-  cdef long x2_pack_shift_prt(PrtData *pd, PrtProp *pp, real2d sendbuf,
-                              long *sendbuf_size, real xmin, real xmax):
-
-    cdef:
-      long n,i
-      real dx = xmax-xmin
-
+    cdef long n,i
     i=0
 
     for n in range(pp.Np):
 
       if pd.x[n] >= xmax:
 
-        sendbuf[0,i] = pd.x[n] - dx
+        sendbuf[0,i] = pd.x[n]
         i=i+1
         sendbuf[0,i] = pd.y[n]
         i=i+1
@@ -352,13 +342,10 @@ IF MPI:
     return i
 
 
-  cdef long y1_pack_shift_prt(PrtData *pd, PrtProp *pp, real2d sendbuf,
-                            long *sendbuf_size, real ymin, real ymax):
+  cdef long y1_pack_prt(PrtData *pd, PrtProp *pp, real2d sendbuf,
+                        long *sendbuf_size, real ymin, real ymax):
 
-    cdef:
-      long n,i
-      real dy = ymax-ymin
-
+    cdef long n,i
     i=0
 
     for n in range(pp.Np):
@@ -367,7 +354,7 @@ IF MPI:
 
         sendbuf[0,i] = pd.x[n]
         i=i+1
-        sendbuf[0,i] = pd.y[n] + dy
+        sendbuf[0,i] = pd.y[n]
         i=i+1
         sendbuf[0,i] = pd.z[n]
         i=i+1
@@ -398,13 +385,10 @@ IF MPI:
     return i
 
 
-  cdef long y2_pack_shift_prt(PrtData *pd, PrtProp *pp, real2d sendbuf,
-                              long *sendbuf_size, real ymin, real ymax):
+  cdef long y2_pack_prt(PrtData *pd, PrtProp *pp, real2d sendbuf,
+                        long *sendbuf_size, real ymin, real ymax):
 
-    cdef:
-      long n,i
-      real dy = ymax-ymin
-
+    cdef long n,i
     i=0
 
     for n in range(pp.Np):
@@ -413,7 +397,7 @@ IF MPI:
 
         sendbuf[0,i] = pd.x[n]
         i=i+1
-        sendbuf[0,i] = pd.y[n] - dy
+        sendbuf[0,i] = pd.y[n]
         i=i+1
         sendbuf[0,i] = pd.z[n]
         i=i+1
@@ -444,13 +428,10 @@ IF MPI:
     return i
 
 
-  cdef long z1_pack_shift_prt(PrtData *pd, PrtProp *pp, real2d sendbuf,
-                            long *sendbuf_size, real zmin, real zmax):
+  cdef long z1_pack_prt(PrtData *pd, PrtProp *pp, real2d sendbuf,
+                        long *sendbuf_size, real zmin, real zmax):
 
-    cdef:
-      long n,i
-      real dz = zmax-zmin
-
+    cdef long n,i
     i=0
 
     for n in range(pp.Np):
@@ -461,7 +442,7 @@ IF MPI:
         i=i+1
         sendbuf[0,i] = pd.y[n]
         i=i+1
-        sendbuf[0,i] = pd.z[n] + dz
+        sendbuf[0,i] = pd.z[n]
         i=i+1
         sendbuf[0,i] = pd.u[n]
         i=i+1
@@ -490,13 +471,10 @@ IF MPI:
     return i
 
 
-  cdef long z2_pack_shift_prt(PrtData *pd, PrtProp *pp, real2d sendbuf,
-                            long *sendbuf_size, real zmin, real zmax):
+  cdef long z2_pack_prt(PrtData *pd, PrtProp *pp, real2d sendbuf,
+                        long *sendbuf_size, real zmin, real zmax):
 
-    cdef:
-      long n,i
-      real dz = zmax-zmin
-
+    cdef long n,i
     i=0
 
     for n in range(pp.Np):
@@ -507,7 +485,7 @@ IF MPI:
         i=i+1
         sendbuf[0,i] = pd.y[n]
         i=i+1
-        sendbuf[0,i] = pd.z[n] - dz
+        sendbuf[0,i] = pd.z[n]
         i=i+1
         sendbuf[0,i] = pd.u[n]
         i=i+1
@@ -536,21 +514,34 @@ IF MPI:
     return i
 
 
-  cdef void unpack_prt(PrtData *pd, PrtProp *pp, real2d recvbuf, long recvbuf_size):
+  cdef void unpack_shift_prt(PrtData *pd, PrtProp *pp,
+                             real2d recvbuf, long recvbuf_size,
+                             real lenx, real leny, real lenz):
 
-    cdef long n,i
+    cdef:
+      long n,i
+      real x,y,z
 
     n = pp.Np
     i=0
 
     while i < recvbuf_size:
 
-      pd.x[n] = recvbuf[0,i]
+      x = recvbuf[0,i] % lenx
+      if x<0.: x+=lenx
+      pd.x[n] = x
       i=i+1
-      pd.y[n] = recvbuf[0,i]
+
+      y = recvbuf[0,i] % leny
+      if y<0.: y+=leny
+      pd.y[n] = y
       i=i+1
-      pd.z[n] = recvbuf[0,i]
+
+      z = recvbuf[0,i] % lenz
+      if z<0.: z+=lenz
+      pd.z[n] = z
       i=i+1
+
       pd.u[n] = recvbuf[0,i]
       i=i+1
       pd.v[n] = recvbuf[0,i]

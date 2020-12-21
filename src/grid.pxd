@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from bnz.defs_cy cimport *
+from defs cimport *
 
 
 cdef class GridCoord:
@@ -21,7 +21,7 @@ cdef class GridCoord:
   real lmin[3]        # coordinates of left border of global domain
   real lmax[3]        # coordinates of right border of global domain
 
-  # MPI data
+  # MPI data.
   int rank            # MPI rank of the grid
   int pos[3]          # 3D index of the grid on the current processor
   int size[3]         # number of MPI blocks (grids) in x,y,z directions
@@ -30,8 +30,6 @@ cdef class GridCoord:
   int nbr_ranks[3][2] # ranks of neighboring grids
   # nbr_ids[axis,L(0)/R(1)]
 
-
-# All grid data.
 
 cdef class GridData:
 
@@ -42,25 +40,21 @@ cdef class GridData:
 
 
 # circular import: can use forward declarations instead?
-from bnz.bc.grid_bc cimport GridBc
-from bnz.particle.particle cimport BnzParticles
-
-# Grid class, contains parameters and data of local grid.
+# from bnz.bc.grid_bc cimport GridBc
+# from bnz.particle.particle cimport BnzParticles
+cdef class GridBc
+cdef class BnzParticles
+cdef class BnzIntegr
 
 cdef class BnzGrid:
 
   cdef:
     GridCoord coord      # grid coordinates
     GridData data        # grid data
-    # GridScratch scratch  # scratch arrays
     GridBc bc            # boundary conditions
     BnzParticles prts    # particles
 
-  cdef bytes usr_dir     # user directory, contains config file
+  cdef str usr_dir     # user directory, contains config file
 
-
-# Scratch arrays used by the integrator (mainly by diffusion routines).
-
-# cdef class GridScratch:
-
-  # cdef real4d curr_tmp      # temporary copy of the particle current array
+  cdef void apply_bc(self, BnzIntegr, int1d)
+  cdef void apply_prt_bc(self, BnzIntegr)

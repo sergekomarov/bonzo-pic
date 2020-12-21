@@ -6,7 +6,7 @@ cdef class BnzIntegr:
   cdef:
     real time
     real tmax
-    ints nstep
+    long step
     real dt
 
   # Courant number

@@ -10,7 +10,7 @@ import sys
 
 from libc.stdlib cimport free, calloc
 
-from bnz.utils cimport free_3d_array, calloc_3d_array, print_root
+from bnz.util cimport free_3d_array, calloc_3d_array, print_root
 from bnz.io.read_config import read_param
 from hilbertcurve import HilbertCurve
 
@@ -24,9 +24,9 @@ ELSE:
 
 cdef class GridCoord:
 
-  def __cinit__(self, bytes usr_dir):
+  def __cinit__(self, str usr_dir):
 
-    # box size in cells
+    # box size in active cells
     self.Nact_glob[0] = read_param("computation","Nx",'i',usr_dir)
     self.Nact_glob[1] = read_param("computation","Ny",'i',usr_dir)
     self.Nact_glob[2] = read_param("computation","Nz",'i',usr_dir)
@@ -47,8 +47,8 @@ cdef class GridCoord:
 
     # Set the number of ghost cells.
 
-    Nfilt = read_param("computation", "Nfilt", 'i',usr_dir)
-    self.ng = IMIN(4, IMAX(1, Nfilt))
+    nfilt = read_param("computation", "Nfilt", 'i',usr_dir)
+    self.ng = IMIN(4, IMAX(1, nfilt))
 
     self.Ntot_glob[0] = self.Nact_glob[0] + 2*self.ng+1
     IF D2D: self.Ntot_glob[1] = self.Nact_glob[1] + 2*self.ng+1
@@ -71,13 +71,14 @@ cdef class GridCoord:
     IF D3D: self.k1, self.k2 = self.ng, self.Nact_glob[2] + self.ng - 1
     ELSE: self.k1, self.k2 = 0,0
 
-    # Set the same local size as global for now.
+    # Set the same local size as global.
     # (will be reset when domain decomposition is used)
 
     for k in range(3):
       self.Nact[k] = self.Nact_glob[k]
       self.Ntot[k] = self.Ntot_glob[k]
 
+    # Default MPI params.
     self.rank=0
     for k in range(3):
       self.pos[k]=0
@@ -100,22 +101,16 @@ cdef class GridData:
     gd.bfld = np.zeros(sh_3, dtype=np_real)
     gd.curr = np.zeros(sh_3, dtype=np_real)
 
-    # IF MPI:
-    #   scr.ce_tmp = np.zeros(sh_3, dtype=np_real)
-
 
 # ----------------------------------------------------------
 
 cdef class BnzGrid:
 
-  def __cinit__(self, bytes usr_dir):
+  def __cinit__(self, str usr_dir):
 
     self.usr_dir = usr_dir
 
     self.coord = GridCoord(usr_dir)
-
-    # set index-related parameters
-    init_params(self.coord, usr_dir)
 
     # do domain decomposition
     IF MPI: domain_decomp(self.coord, usr_dir)
@@ -133,12 +128,19 @@ cdef class BnzGrid:
 
     IF MPI: free_3d_array(self.coord.ranks)
 
+  cdef void apply_grid_bc(self, BnzIntegr integr, int1d bvars):
+    self.bc.apply_grid_bc(self.data, self.coord, integr, bvars)
+
+  cdef void apply_prt_bc(self, BnzIntegr integr):
+    self.prts.bc.apply_prt_bc(self.prts.data, self.prts.prop,
+                              self.data, self.coord, integr)
+
 
 # ----------------------------------------------------------------------
 
 IF MPI:
 
-  cdef void domain_decomp(GridCoord *gc, bytes usr_grid):
+  cdef void domain_decomp(GridCoord *gc, str usr_grid):
 
     cdef mpi.Comm comm = mpi.COMM_WORLD
 
