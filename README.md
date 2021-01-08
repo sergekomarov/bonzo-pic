@@ -19,7 +19,7 @@ python setup.py --help
 ```
 python setup.py build_ext --inplace --problem=problem_name [options]
 ```
-``problem_name`` corresponds to the name of the chosen problem generator found in the ``problem`` directory
+``problem_name`` corresponds to the name of the chosen problem generator found in the ``src/problem`` directory
 
 ## Running
 
@@ -35,5 +35,5 @@ cp config.cfg user_dir
 ```
 python main.py ./user_dir
 ```
-4) Output is written to the ``out`` directory in the user folder, restart files saved in ``rst``.
+4) Output is written to ``user_dir/out``, restart files saved in ``user_dir/rst``.
 
