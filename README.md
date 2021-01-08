@@ -1,8 +1,6 @@
 # bonzo-pic
 
-Particle-in-cell code for plasma modelling.
-
-A version of the TRISTAN code by O. Buneman (1993) implemented in Cython and C.
+Particle-in-cell code for plasma modelling: a version of the TRISTAN code by O. Buneman (1993) implemented in Cython and C.
 
 ## Prerequisites
 
