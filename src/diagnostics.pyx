@@ -44,9 +44,12 @@ cdef void print_nrg(BnzGrid grid, BnzIntegr integr):
       for j in range(gc.j1, gc.j2+1):
         for i in range(gc.i1, gc.i2+1):
 
-          ee_loc[id] = ee_loc[id] + 0.5*(SQR(gd.ee[0,k,j,i]) + SQR(gd.ee[1,k,j,i]) + SQR(gd.ee[2,k,j,i]))
-          em_loc[id] = em_loc[id] + 0.5*(SQR(gd.bf[0,k,j,i]) + SQR(gd.bf[1,k,j,i]) + SQR(gd.bf[2,k,j,i]))
-
+          ee_loc[id] = ee_loc[id] + 0.5*(SQR(gd.efld[0,k,j,i])
+                                       + SQR(gd.efld[1,k,j,i])
+                                       + SQR(gd.efld[2,k,j,i]))
+          em_loc[id] = em_loc[id] + 0.5*(SQR(gd.bfld[0,k,j,i])
+                                       + SQR(gd.bfld[1,k,j,i])
+                                       + SQR(gd.bfld[2,k,j,i]))
 
   with nogil, parallel(num_threads=OMP_NT):
     id = threadid()
